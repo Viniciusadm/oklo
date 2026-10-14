@@ -57,6 +57,9 @@ import com.archieapps.oklo.ui.components.DeckPickerDialog
 import com.archieapps.oklo.ui.components.DeckRow
 import com.archieapps.oklo.ui.components.EmptyState
 import com.archieapps.oklo.ui.components.Eyebrow
+import com.archieapps.oklo.ui.components.InlineProgress
+import com.archieapps.oklo.ui.components.Notice
+import com.archieapps.oklo.ui.components.NoticeTone
 import com.archieapps.oklo.ui.components.Hairline
 import com.archieapps.oklo.ui.components.IconAction
 import com.archieapps.oklo.ui.components.ListRow
@@ -89,6 +92,7 @@ fun DeckScreen(navigator: AppNavigator, deckId: String) {
     val selectedTab by viewModel.tab.collectAsStateWithLifecycle()
     val reorder by viewModel.reorder.collectAsStateWithLifecycle()
     val lesson by viewModel.lesson.collectAsStateWithLifecycle()
+    val lessonProgress by viewModel.lessonProgress.collectAsStateWithLifecycle()
     val message by viewModel.operations.message.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -148,6 +152,7 @@ fun DeckScreen(navigator: AppNavigator, deckId: String) {
                         node = node,
                         parentPath = pathParent,
                         lessonTitle = lesson?.let { lessonTitle(it.source, node.deck.name) },
+                        lessonProgress = lessonProgress,
                         onLesson = { navigator.to(Routes.lesson(node.id)) },
                         onEditLesson = { navigator.to(Routes.editLesson(node.id)) },
                         onLessonAi = { lessonAiOpen = true },
@@ -340,6 +345,7 @@ private fun Summary(
     node: DeckNode,
     parentPath: String?,
     lessonTitle: String?,
+    lessonProgress: LessonProgress,
     onLesson: () -> Unit,
     onEditLesson: () -> Unit,
     onLessonAi: () -> Unit,
@@ -372,18 +378,24 @@ private fun Summary(
                 SecondaryButton("Ver aula", onClick = onLesson)
             }
         }
-        SecondaryButton(
-            if (lessonTitle != null) "Editar aula" else "Escrever aula",
-            onClick = onEditLesson,
-            icon = R.drawable.ic_edit,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        SecondaryButton(
-            if (lessonTitle != null) "Substituir aula com IA" else "Gerar aula com IA",
-            onClick = onLessonAi,
-            icon = R.drawable.ic_sparkle,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        when (lessonProgress) {
+            LessonProgress.Generating -> InlineProgress("Gerando aula…", Modifier.fillMaxWidth())
+            else -> {
+                (lessonProgress as? LessonProgress.Failed)?.let { Notice(it.message, tone = NoticeTone.Error) }
+            SecondaryButton(
+                if (lessonTitle != null) "Editar aula" else "Escrever aula",
+                onClick = onEditLesson,
+                icon = R.drawable.ic_edit,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            SecondaryButton(
+                if (lessonProgress is LessonProgress.Failed) "Tentar de novo" else if (lessonTitle != null) "Substituir aula com IA" else "Gerar aula com IA",
+                onClick = onLessonAi,
+                icon = R.drawable.ic_sparkle,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            }
+        }
         val canStudy = counts.pending + counts.newCount > 0
         Column(Modifier.padding(top = Spacing.xs), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             PrimaryButton("Estudar este deck", onClick = onStudy, enabled = canStudy, icon = R.drawable.ic_school)

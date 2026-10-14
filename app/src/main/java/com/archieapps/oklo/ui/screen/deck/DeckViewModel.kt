@@ -6,19 +6,43 @@ import com.archieapps.oklo.Container
 import com.archieapps.oklo.core.time.LocalDay
 import com.archieapps.oklo.data.model.Card
 import com.archieapps.oklo.data.model.Lesson
+import com.archieapps.oklo.data.repo.LessonJobState
+import com.archieapps.oklo.data.repo.LessonJobTracker
 import com.archieapps.oklo.domain.DeckNode
 import com.archieapps.oklo.domain.DeckTree
 import com.archieapps.oklo.ui.common.DeckOperations
 import com.archieapps.oklo.ui.common.minuteTicker
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 enum class DeckTab { Subdecks, Cards }
+
+sealed interface LessonProgress {
+    data object Idle : LessonProgress
+
+    data object Generating : LessonProgress
+
+    data class Failed(val message: String) : LessonProgress
+}
+
+const val LESSON_DELAYED = "A aula está demorando mais que o normal. Tente de novo mais tarde."
+
+fun lessonProgress(tracker: LessonJobTracker, deckId: String): Flow<LessonProgress> =
+    tracker.jobState(deckId).map { state ->
+        when (state) {
+            null, is LessonJobState.Done -> LessonProgress.Idle
+            LessonJobState.Polling -> LessonProgress.Generating
+            is LessonJobState.Failed -> LessonProgress.Failed(state.error)
+            LessonJobState.Delayed -> LessonProgress.Failed(LESSON_DELAYED)
+        }
+    }
 
 sealed interface DeckUi {
     data object Missing : DeckUi
@@ -44,6 +68,9 @@ class DeckViewModel(private val container: Container, val deckId: String) : View
 
     val lesson: StateFlow<Lesson?> = container.lessons.observeByDeck(deckId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    val lessonProgress: StateFlow<LessonProgress> = lessonProgress(container.lessonAiFinisher, deckId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LessonProgress.Idle)
 
     val ui: StateFlow<DeckUi?> = combine(
         container.decks.decks,
