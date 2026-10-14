@@ -147,6 +147,7 @@ fun DeckScreen(navigator: AppNavigator, deckId: String) {
                         parentPath = pathParent,
                         lessonTitle = lesson?.let { lessonTitle(it.source, node.deck.name) },
                         onLesson = { navigator.to(Routes.lesson(node.id)) },
+                        onEditLesson = { navigator.to(Routes.editLesson(node.id)) },
                         onStudy = { viewModel.study(node.id, navigator::to) },
                         onAddCard = { navigator.to(Routes.newCard(node.id)) },
                         onAi = { navigator.to(Routes.aiCreate(node.id)) },
@@ -328,6 +329,7 @@ private fun Summary(
     parentPath: String?,
     lessonTitle: String?,
     onLesson: () -> Unit,
+    onEditLesson: () -> Unit,
     onStudy: () -> Unit,
     onAddCard: () -> Unit,
     onAi: () -> Unit,
@@ -357,6 +359,12 @@ private fun Summary(
                 SecondaryButton("Ver aula", onClick = onLesson)
             }
         }
+        SecondaryButton(
+            if (lessonTitle != null) "Editar aula" else "Escrever aula",
+            onClick = onEditLesson,
+            icon = R.drawable.ic_edit,
+            modifier = Modifier.fillMaxWidth(),
+        )
         val canStudy = counts.pending + counts.newCount > 0
         Column(Modifier.padding(top = Spacing.xs), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             PrimaryButton("Estudar este deck", onClick = onStudy, enabled = canStudy, icon = R.drawable.ic_school)

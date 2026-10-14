@@ -53,6 +53,7 @@ import com.archieapps.oklo.ui.screen.connect.ConnectScreen
 import com.archieapps.oklo.ui.screen.deck.DeckScreen
 import com.archieapps.oklo.ui.screen.editor.CardEditorScreen
 import com.archieapps.oklo.ui.screen.home.HomeScreen
+import com.archieapps.oklo.ui.screen.lesson.LessonEditorScreen
 import com.archieapps.oklo.ui.screen.lesson.LessonMode
 import com.archieapps.oklo.ui.screen.lesson.LessonScreen
 import com.archieapps.oklo.ui.screen.library.LibraryScreen
@@ -76,6 +77,7 @@ object Routes {
     const val STUDY = "study?deckId={deckId}"
     const val CONNECT = "connect"
     const val LESSON = "lesson/{deckId}?mode={mode}&target={target}"
+    const val LESSON_EDIT = "lesson/{deckId}/edit"
 
     fun stats(deckId: String? = null) = if (deckId == null) "stats" else "stats?deckId=$deckId"
     fun settingsSection(section: SettingsSection) = "settings/${section.key}"
@@ -84,6 +86,8 @@ object Routes {
     fun editCard(cardId: String) = "editor?cardId=$cardId"
     fun aiCreate(deckId: String? = null) = if (deckId == null) "ai/create" else "ai/create?deckId=$deckId"
     fun study(deckId: String? = null) = if (deckId == null) "study" else "study?deckId=$deckId"
+
+    fun editLesson(deckId: String) = "lesson/$deckId/edit"
 
     fun lesson(deckId: String, mode: LessonRouteMode = LessonRouteMode.Read, target: String? = null): String {
         val base = "lesson/$deckId?mode=${mode.key}"
@@ -228,6 +232,12 @@ fun OkloRoot() {
                         mode = LessonMode.of(backStack.arguments?.getString("mode")),
                         target = backStack.arguments?.getString("target"),
                     )
+                }
+                composable(
+                    Routes.LESSON_EDIT,
+                    arguments = listOf(navArgument("deckId") { type = NavType.StringType }),
+                ) { backStack ->
+                    LessonEditorScreen(navigator, deckId = backStack.arguments?.getString("deckId").orEmpty())
                 }
             }
         }
