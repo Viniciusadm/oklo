@@ -67,7 +67,7 @@ class FakeServer(private val pageSize: Int = 1000) {
         changes.lessons.forEach { row ->
             val existing = lessons.values.firstOrNull { it.row.deckId == row.deckId }
             when {
-                existing != null && existing.row.id != row.id -> rejected += RejectedRow("lesson", row.id, "Este baralho já tem uma aula.")
+                existing != null && existing.row.id != row.id -> rejected += RejectedRow("lesson", row.id, SyncEngine.DECK_HAS_LESSON)
                 existing != null && row.updatedAt < existing.row.updatedAt -> skipped += RowRef("lesson", row.id)
                 else -> {
                     lessons[row.id] = Stored(row, next)

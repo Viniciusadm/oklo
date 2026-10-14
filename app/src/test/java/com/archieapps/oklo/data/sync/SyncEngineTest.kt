@@ -339,5 +339,34 @@ class SyncEngineTest {
 
         assertEquals(listOf("lesson"), a.rejected.map { it.entity })
         assertEquals(setOf("l1"), server.lessons.keys)
+        assertFalse(a.lessons.getValue("l2").dirty)
+    }
+
+    @Test
+    fun `a manual lesson rejected because the deck has a server lesson is kept under the server id and pushed next`() = runTest {
+        val server = FakeServer()
+        val other = InMemorySyncStore()
+        other.putDeck(deck("d1"))
+        other.putLesson(lesson("B", "d1", source = "aula da IA", at = 1_000))
+        SyncEngine(other, server.remote()).sync()
+        val a = InMemorySyncStore()
+        a.putLesson(lesson("A", "d1", source = "aula manual", at = 2_000))
+
+        val first = SyncEngine(a, server.remote()).sync() as SyncReport.Done
+
+        assertEquals(1, first.rejected)
+        assertEquals(setOf("B"), a.lessons.keys)
+        val merged = a.lessons.getValue("B")
+        assertEquals("aula manual", merged.row.source)
+        assertTrue(merged.dirty)
+        assertEquals("aula da IA", server.lessons.getValue("B").row.source)
+
+        val second = SyncEngine(a, server.remote()).sync() as SyncReport.Done
+
+        assertEquals(0, second.rejected)
+        assertEquals("aula manual", server.lessons.getValue("B").row.source)
+        assertEquals(setOf("B"), server.lessons.keys)
+        assertFalse(a.lessons.getValue("B").dirty)
+        assertEquals(0, a.dirtyCount())
     }
 }

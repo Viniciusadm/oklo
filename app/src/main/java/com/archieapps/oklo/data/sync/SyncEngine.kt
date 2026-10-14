@@ -91,13 +91,16 @@ class SyncEngine(
         }
         when (val pulled = pull()) {
             is PullOutcome.Failed -> SyncReport.Failed(pulled.failure, SyncReport.Stage.Pull)
-            is PullOutcome.Pulled -> SyncReport.Done(
-                pushed = pushed.rows,
-                pulled = pulled.received,
-                applied = pulled.applied,
-                rejected = pushed.rejected,
-                usn = pulled.usn,
-            )
+            is PullOutcome.Pulled -> {
+                if (pushed.awaitingMerge.isNotEmpty()) store.markClean(pushed.awaitingMerge)
+                SyncReport.Done(
+                    pushed = pushed.rows,
+                    pulled = pulled.received,
+                    applied = pulled.applied,
+                    rejected = pushed.rejected,
+                    usn = pulled.usn,
+                )
+            }
         }
     }
 
@@ -136,7 +139,7 @@ class SyncEngine(
     }
 
     private sealed interface PushOutcome {
-        data class Pushed(val rows: Int, val rejected: Int) : PushOutcome
+        data class Pushed(val rows: Int, val rejected: Int, val awaitingMerge: List<CleanRef> = emptyList()) : PushOutcome
         data class Failed(val failure: ApiResult.Failure) : PushOutcome
     }
 
@@ -151,11 +154,16 @@ class SyncEngine(
         val deviceId = store.deviceId()
         var rows = 0
         var rejected = 0
+        val awaitingMerge = mutableListOf<CleanRef>()
         for (batch in batches(dirty)) {
             when (val result = remote.push(PushRequest(deviceId, batch))) {
                 is ApiResult.Failure -> return PushOutcome.Failed(result)
                 is ApiResult.Success -> {
-                    store.markClean(cleanRefs(batch))
+                    val deferred = deckLessonConflicts(result.data.rejected)
+                    val refs = cleanRefs(batch)
+                    val (later, now) = refs.partition { it.entity == SyncEntity.Lesson && it.id in deferred }
+                    store.markClean(now)
+                    awaitingMerge += later
                     if (result.data.rejected.isNotEmpty()) {
                         store.recordRejected(result.data.rejected)
                     }
@@ -164,8 +172,11 @@ class SyncEngine(
                 }
             }
         }
-        return PushOutcome.Pushed(rows, rejected)
+        return PushOutcome.Pushed(rows, rejected, awaitingMerge)
     }
+
+    private fun deckLessonConflicts(rejected: List<RejectedRow>): Set<String> =
+        rejected.filter { it.entity == SyncEntity.Lesson.wire && it.reason == DECK_HAS_LESSON }.mapNotNull { it.id }.toSet()
 
     private suspend fun pull(): PullOutcome {
         val since = store.lastUsn()
@@ -238,5 +249,6 @@ class SyncEngine(
 
     companion object {
         const val MAX_BATCH = 500
+        const val DECK_HAS_LESSON = "O deck já tem uma aula."
     }
 }

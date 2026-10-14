@@ -8,6 +8,8 @@ import com.archieapps.oklo.core.net.RejectedRow
 import com.archieapps.oklo.core.net.ReviewDto
 import com.archieapps.oklo.core.net.SettingsDto
 import com.archieapps.oklo.data.db.RowVersion
+import com.archieapps.oklo.data.db.toDto
+import com.archieapps.oklo.data.db.toEntity
 import java.util.UUID
 
 data class Local<T>(val row: T, val dirty: Boolean)
@@ -102,7 +104,12 @@ class InMemorySyncStore(private val device: String = UUID.randomUUID().toString(
         changes.decks.forEach { decks[it.id] = Local(it, false) }
         changes.cards.forEach { cards[it.id] = Local(it, false) }
         changes.reviews.forEach { if (!reviews.containsKey(it.id)) reviews[it.id] = Local(it, false) }
-        changes.lessons.forEach { lessons[it.id] = Local(it, false) }
+        changes.lessons.forEach { incoming ->
+            val other = lessons.values.firstOrNull { it.row.deckId == incoming.deckId && it.row.id != incoming.id }
+            other?.let { lessons.remove(it.row.id) }
+            val resolved = LessonDeckMerge.resolve(other?.let { it.row.toEntity(it.dirty) }, incoming)
+            lessons[resolved.id] = Local(resolved.toDto(), resolved.dirty)
+        }
         changes.settings?.let { settings = Local(it, false) }
     }
 
