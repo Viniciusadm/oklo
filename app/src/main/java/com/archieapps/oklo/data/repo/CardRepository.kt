@@ -57,6 +57,7 @@ class CardRepository(
                 createdAt = now,
                 updatedAt = now,
                 deletedAt = null,
+                lessonTarget = null,
                 dirty = true,
             )
             db.cards().upsert(entity)

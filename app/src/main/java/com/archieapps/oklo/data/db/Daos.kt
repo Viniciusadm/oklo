@@ -128,6 +128,42 @@ interface ReviewDao {
 }
 
 @Dao
+interface LessonDao {
+    @Query("SELECT * FROM lessons WHERE deckId = :deckId AND deletedAt IS NULL")
+    fun observeByDeck(deckId: String): Flow<LessonEntity?>
+
+    @Query("SELECT * FROM lessons WHERE deckId = :deckId")
+    suspend fun getByDeck(deckId: String): LessonEntity?
+
+    @Query("SELECT * FROM lessons WHERE id = :id")
+    suspend fun get(id: String): LessonEntity?
+
+    @Upsert
+    suspend fun upsert(lesson: LessonEntity)
+
+    @Upsert
+    suspend fun upsertAll(lessons: List<LessonEntity>)
+
+    @Query("DELETE FROM lessons WHERE deckId = :deckId AND id != :keepId")
+    suspend fun deleteOtherForDeck(deckId: String, keepId: String)
+
+    @Query("SELECT * FROM lessons WHERE dirty = 1")
+    suspend fun dirty(): List<LessonEntity>
+
+    @Query("UPDATE lessons SET dirty = 0 WHERE id = :id AND updatedAt = :updatedAt")
+    suspend fun markClean(id: String, updatedAt: Long)
+
+    @Query("SELECT id, updatedAt, dirty FROM lessons WHERE id IN (:ids)")
+    suspend fun versions(ids: List<String>): List<RowVersion>
+
+    @Query("SELECT COUNT(*) FROM lessons WHERE dirty = 1")
+    fun observeDirtyCount(): Flow<Int>
+
+    @Query("DELETE FROM lessons")
+    suspend fun wipe()
+}
+
+@Dao
 interface SettingsDao {
     @Query("SELECT * FROM settings WHERE id = 'global'")
     fun observe(): Flow<SettingsEntity?>

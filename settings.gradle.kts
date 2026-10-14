@@ -24,3 +24,9 @@ dependencyResolutionManagement {
 
 rootProject.name = "Oklo"
 include(":app")
+
+includeBuild("../../ribalta/android") {
+    dependencySubstitution {
+        substitute(module("com.archieapps.ribalta:ribalta-android")).using(project(":ribalta"))
+    }
+}

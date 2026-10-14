@@ -6,7 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [DeckEntity::class, CardEntity::class, ReviewEntity::class, SettingsEntity::class],
+    entities = [DeckEntity::class, CardEntity::class, ReviewEntity::class, LessonEntity::class, SettingsEntity::class],
     version = 1,
     exportSchema = true,
 )
@@ -16,6 +16,8 @@ abstract class OkloDatabase : RoomDatabase() {
     abstract fun cards(): CardDao
 
     abstract fun reviews(): ReviewDao
+
+    abstract fun lessons(): LessonDao
 
     abstract fun settings(): SettingsDao
 

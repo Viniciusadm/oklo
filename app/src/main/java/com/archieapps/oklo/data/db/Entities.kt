@@ -40,6 +40,24 @@ data class CardEntity(
     val createdAt: Long,
     val updatedAt: Long,
     val deletedAt: Long?,
+    val lessonTarget: String?,
+    val dirty: Boolean,
+)
+
+@Entity(
+    tableName = "lessons",
+    indices = [Index("deckId", unique = true), Index("dirty")],
+)
+data class LessonEntity(
+    @PrimaryKey val id: String,
+    val deckId: String,
+    val source: String,
+    val version: Int,
+    val ribaltaVersion: String,
+    val origin: String,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val deletedAt: Long?,
     val dirty: Boolean,
 )
 

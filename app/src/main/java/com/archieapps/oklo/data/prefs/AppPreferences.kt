@@ -39,8 +39,8 @@ data class SyncMeta(
     val lastError: String? = null,
 )
 
-class AppPreferences(context: Context) {
-    private val store = context.appDataStore
+class AppPreferences(private val store: DataStore<Preferences>) {
+    constructor(context: Context) : this(context.appDataStore)
 
     val appearance: Flow<Appearance> = store.data.map {
         Appearance(
@@ -102,6 +102,14 @@ class AppPreferences(context: Context) {
         }
     }
 
+    fun seenLessonVersion(deckId: String): Flow<Int?> = store.data.map { it[seenLessonKey(deckId)] }
+
+    suspend fun seenLessonVersionNow(deckId: String): Int? = seenLessonVersion(deckId).first()
+
+    suspend fun markLessonSeen(deckId: String, version: Int) {
+        store.edit { it[seenLessonKey(deckId)] = version }
+    }
+
     suspend fun resetSyncState() {
         store.edit {
             it.remove(LAST_USN)
@@ -121,5 +129,7 @@ class AppPreferences(context: Context) {
         private val REJECTED_COUNT = intPreferencesKey("rejected_count")
         private val LAST_REJECTED_REASON = stringPreferencesKey("last_rejected_reason")
         private val LAST_ERROR = stringPreferencesKey("last_sync_error")
+
+        private fun seenLessonKey(deckId: String) = intPreferencesKey("seen_lesson_$deckId")
     }
 }

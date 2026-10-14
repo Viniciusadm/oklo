@@ -14,6 +14,7 @@ import com.archieapps.oklo.data.repo.AiRepository
 import com.archieapps.oklo.data.repo.AuthRepository
 import com.archieapps.oklo.data.repo.CardRepository
 import com.archieapps.oklo.data.repo.DeckRepository
+import com.archieapps.oklo.data.repo.LessonRepository
 import com.archieapps.oklo.data.repo.SettingsRepository
 import com.archieapps.oklo.data.repo.StudyRepository
 import com.archieapps.oklo.data.sync.RetrofitSyncRemote
@@ -38,6 +39,7 @@ class Container(application: Application) {
     val decks = DeckRepository(database)
     val cards = CardRepository(database)
     val settings = SettingsRepository(database)
+    val lessons = LessonRepository(database.lessons(), preferences)
     val study = StudyRepository(database, settings)
     val auth = AuthRepository(network.api, network.errors, sessionStore, codeVault)
     val ai = AiRepository(network.api, network.gatedApi, network.errors, codeGate, network.json)

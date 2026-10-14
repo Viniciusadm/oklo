@@ -4,6 +4,7 @@ import com.archieapps.oklo.core.net.ApiResult
 import com.archieapps.oklo.core.net.CardDto
 import com.archieapps.oklo.core.net.ChangeSet
 import com.archieapps.oklo.core.net.DeckDto
+import com.archieapps.oklo.core.net.LessonDto
 import com.archieapps.oklo.core.net.PullBody
 import com.archieapps.oklo.core.net.PushBody
 import com.archieapps.oklo.core.net.PushRequest
@@ -18,6 +19,7 @@ enum class SyncEntity(val wire: String) {
     Deck("deck"),
     Card("card"),
     Review("review"),
+    Lesson("lesson"),
     Settings("settings"),
 }
 
@@ -105,6 +107,7 @@ class SyncEngine(
         val decks = mutableListOf<DeckDto>()
         val cards = mutableListOf<CardDto>()
         val reviews = mutableListOf<ReviewDto>()
+        val lessons = mutableListOf<LessonDto>()
         var settings: SettingsDto? = null
         do {
             when (val page = remote.snapshot(cursor)) {
@@ -115,6 +118,7 @@ class SyncEngine(
                     decks += body.changes.decks
                     cards += body.changes.cards
                     reviews += body.changes.reviews
+                    lessons += body.changes.lessons
                     body.changes.settings?.let { settings = it }
                     cursor = body.nextCursor
                 }
@@ -124,6 +128,7 @@ class SyncEngine(
             decks = decks.distinctBy { it.id },
             cards = cards.distinctBy { it.id },
             reviews = reviews.distinctBy { it.id },
+            lessons = lessons.distinctBy { it.id },
             settings = settings,
         )
         store.replaceAll(all, usn)
@@ -190,11 +195,13 @@ class SyncEngine(
             val deckVersions = store.versions(SyncEntity.Deck, changes.decks.map { it.id })
             val cardVersions = store.versions(SyncEntity.Card, changes.cards.map { it.id })
             val reviewVersions = store.versions(SyncEntity.Review, changes.reviews.map { it.id })
+            val lessonVersions = store.versions(SyncEntity.Lesson, changes.lessons.map { it.id })
             val settingsVersion = changes.settings?.let { store.versions(SyncEntity.Settings, listOf(it.id))[it.id] }
             val winners = ChangeSet(
                 decks = changes.decks.filter { SyncMerge.incomingWins(deckVersions[it.id], it.updatedAt) },
                 cards = changes.cards.filter { SyncMerge.incomingWins(cardVersions[it.id], it.updatedAt) },
                 reviews = changes.reviews.filter { reviewVersions[it.id] == null },
+                lessons = changes.lessons.filter { SyncMerge.incomingWins(lessonVersions[it.id], it.updatedAt) },
                 settings = changes.settings?.takeIf { SyncMerge.incomingWins(settingsVersion, it.updatedAt) },
             )
             store.writeClean(winners)
@@ -207,6 +214,7 @@ class SyncEngine(
             addAll(changes.decks)
             addAll(changes.cards)
             addAll(changes.reviews)
+            addAll(changes.lessons)
             changes.settings?.let { add(it) }
         }
         return items.chunked(batchLimit).map { chunk ->
@@ -214,6 +222,7 @@ class SyncEngine(
                 decks = chunk.filterIsInstance<DeckDto>(),
                 cards = chunk.filterIsInstance<CardDto>(),
                 reviews = chunk.filterIsInstance<ReviewDto>(),
+                lessons = chunk.filterIsInstance<LessonDto>(),
                 settings = chunk.filterIsInstance<SettingsDto>().firstOrNull(),
             )
         }
@@ -223,6 +232,7 @@ class SyncEngine(
         batch.decks.forEach { add(CleanRef(SyncEntity.Deck, it.id, it.updatedAt)) }
         batch.cards.forEach { add(CleanRef(SyncEntity.Card, it.id, it.updatedAt)) }
         batch.reviews.forEach { add(CleanRef(SyncEntity.Review, it.id, it.updatedAt)) }
+        batch.lessons.forEach { add(CleanRef(SyncEntity.Lesson, it.id, it.updatedAt)) }
         batch.settings?.let { add(CleanRef(SyncEntity.Settings, it.id, it.updatedAt)) }
     }
 

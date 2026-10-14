@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "1b06ced1479d2f8faa5c5911d54ebd53",
+    "identityHash": "0971556aca2da9a1dc6eab3332fe736c",
     "entities": [
       {
         "tableName": "decks",
@@ -89,7 +89,7 @@
       },
       {
         "tableName": "cards",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `deckId` TEXT NOT NULL, `type` TEXT NOT NULL, `front` TEXT NOT NULL, `back` TEXT, `explanation` TEXT, `answer` INTEGER, `choicesJson` TEXT, `state` TEXT NOT NULL, `step` INTEGER, `stability` REAL, `difficulty` REAL, `dueAt` INTEGER, `lastReviewAt` INTEGER, `reps` INTEGER NOT NULL, `lapses` INTEGER NOT NULL, `suspended` INTEGER NOT NULL, `position` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `dirty` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `deckId` TEXT NOT NULL, `type` TEXT NOT NULL, `front` TEXT NOT NULL, `back` TEXT, `explanation` TEXT, `answer` INTEGER, `choicesJson` TEXT, `state` TEXT NOT NULL, `step` INTEGER, `stability` REAL, `difficulty` REAL, `dueAt` INTEGER, `lastReviewAt` INTEGER, `reps` INTEGER NOT NULL, `lapses` INTEGER NOT NULL, `suspended` INTEGER NOT NULL, `position` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `lessonTarget` TEXT, `dirty` INTEGER NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -206,6 +206,11 @@
             "fieldPath": "deletedAt",
             "columnName": "deletedAt",
             "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lessonTarget",
+            "columnName": "lessonTarget",
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "dirty",
@@ -372,6 +377,97 @@
         ]
       },
       {
+        "tableName": "lessons",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `deckId` TEXT NOT NULL, `source` TEXT NOT NULL, `version` INTEGER NOT NULL, `ribaltaVersion` TEXT NOT NULL, `origin` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `dirty` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deckId",
+            "columnName": "deckId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "version",
+            "columnName": "version",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ribaltaVersion",
+            "columnName": "ribaltaVersion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deletedAt",
+            "columnName": "deletedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "dirty",
+            "columnName": "dirty",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_lessons_deckId",
+            "unique": true,
+            "columnNames": [
+              "deckId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_lessons_deckId` ON `${TABLE_NAME}` (`deckId`)"
+          },
+          {
+            "name": "index_lessons_dirty",
+            "unique": false,
+            "columnNames": [
+              "dirty"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_lessons_dirty` ON `${TABLE_NAME}` (`dirty`)"
+          }
+        ]
+      },
+      {
         "tableName": "settings",
         "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `newPerDay` INTEGER NOT NULL, `reviewsPerDay` INTEGER NOT NULL, `desiredRetention` REAL NOT NULL, `learningStepsMinutes` TEXT NOT NULL, `relearningStepsMinutes` TEXT NOT NULL, `maximumIntervalDays` INTEGER NOT NULL, `enableFuzz` INTEGER NOT NULL, `librarySort` TEXT NOT NULL, `aiModel` TEXT NOT NULL, `updatedAt` INTEGER NOT NULL, `dirty` INTEGER NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
@@ -458,7 +554,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1b06ced1479d2f8faa5c5911d54ebd53')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0971556aca2da9a1dc6eab3332fe736c')"
     ]
   }
 }

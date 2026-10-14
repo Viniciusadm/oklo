@@ -5,6 +5,7 @@ import com.archieapps.oklo.core.net.ApiResult
 import com.archieapps.oklo.core.net.CardDto
 import com.archieapps.oklo.core.net.ChangeSet
 import com.archieapps.oklo.core.net.DeckDto
+import com.archieapps.oklo.core.net.LessonDto
 import com.archieapps.oklo.core.net.PullBody
 import com.archieapps.oklo.core.net.PushBody
 import com.archieapps.oklo.core.net.PushRequest
@@ -19,6 +20,7 @@ class FakeServer(private val pageSize: Int = 1000) {
     val decks = LinkedHashMap<String, Stored<DeckDto>>()
     val cards = LinkedHashMap<String, Stored<CardDto>>()
     val reviews = LinkedHashMap<String, Stored<ReviewDto>>()
+    val lessons = LinkedHashMap<String, Stored<LessonDto>>()
     var settings: Stored<SettingsDto>? = null
     var usn = 0L
     val rejectIds = mutableSetOf<String>()
@@ -40,6 +42,7 @@ class FakeServer(private val pageSize: Int = 1000) {
         var appliedDecks = 0
         var appliedCards = 0
         var appliedReviews = 0
+        var appliedLessons = 0
         var appliedSettings = 0
         changes.decks.forEach { row ->
             when {
@@ -61,6 +64,17 @@ class FakeServer(private val pageSize: Int = 1000) {
                 }
             }
         }
+        changes.lessons.forEach { row ->
+            val existing = lessons.values.firstOrNull { it.row.deckId == row.deckId }
+            when {
+                existing != null && existing.row.id != row.id -> rejected += RejectedRow("lesson", row.id, "Este baralho já tem uma aula.")
+                existing != null && row.updatedAt < existing.row.updatedAt -> skipped += RowRef("lesson", row.id)
+                else -> {
+                    lessons[row.id] = Stored(row, next)
+                    appliedLessons++
+                }
+            }
+        }
         changes.reviews.forEach { row ->
             if (reviews.containsKey(row.id)) {
                 skipped += RowRef("review", row.id)
@@ -77,9 +91,9 @@ class FakeServer(private val pageSize: Int = 1000) {
                 appliedSettings++
             }
         }
-        if (appliedDecks + appliedCards + appliedReviews + appliedSettings > 0) usn = next
+        if (appliedDecks + appliedCards + appliedReviews + appliedLessons + appliedSettings > 0) usn = next
         return ApiResult.Success(
-            PushBody(usn, AppliedCounts(appliedDecks, appliedCards, appliedReviews, appliedSettings), skipped, rejected),
+            PushBody(usn, AppliedCounts(appliedDecks, appliedCards, appliedReviews, appliedSettings, appliedLessons), skipped, rejected),
         )
     }
 
@@ -103,6 +117,11 @@ class FakeServer(private val pageSize: Int = 1000) {
         override val id get() = stored.row.id
     }
 
+    private data class LessonItem(val stored: Stored<LessonDto>) : Item {
+        override val usn get() = stored.usn
+        override val id get() = stored.row.id
+    }
+
     private data class SettingsItem(val stored: Stored<SettingsDto>) : Item {
         override val usn get() = stored.usn
         override val id get() = stored.row.id
@@ -112,6 +131,7 @@ class FakeServer(private val pageSize: Int = 1000) {
         addAll(decks.values.filter { it.usn in (since + 1)..ceiling && (withTombstones || it.row.deletedAt == null) }.sortedWith(compareBy({ it.usn }, { it.row.id })).map(::DeckItem))
         addAll(cards.values.filter { it.usn in (since + 1)..ceiling && (withTombstones || it.row.deletedAt == null) }.sortedWith(compareBy({ it.usn }, { it.row.id })).map(::CardItem))
         addAll(reviews.values.filter { it.usn in (since + 1)..ceiling && (withTombstones || it.row.deletedAt == null) }.sortedWith(compareBy({ it.usn }, { it.row.id })).map(::ReviewItem))
+        addAll(lessons.values.filter { it.usn in (since + 1)..ceiling && (withTombstones || it.row.deletedAt == null) }.sortedWith(compareBy({ it.usn }, { it.row.id })).map(::LessonItem))
         settings?.takeIf { it.usn in (since + 1)..ceiling }?.let { add(SettingsItem(it)) }
     }
 
@@ -125,6 +145,7 @@ class FakeServer(private val pageSize: Int = 1000) {
                 decks = slice.filterIsInstance<DeckItem>().map { it.stored.row },
                 cards = slice.filterIsInstance<CardItem>().map { it.stored.row },
                 reviews = slice.filterIsInstance<ReviewItem>().map { it.stored.row },
+                lessons = slice.filterIsInstance<LessonItem>().map { it.stored.row },
                 settings = slice.filterIsInstance<SettingsItem>().firstOrNull()?.stored?.row,
             ),
             usn = ceiling,

@@ -48,6 +48,20 @@ data class CardDto(
     val createdAt: Long,
     val updatedAt: Long,
     val deletedAt: Long? = null,
+    val lessonTarget: String? = null,
+)
+
+@Serializable
+data class LessonDto(
+    val id: String,
+    val deckId: String,
+    val source: String,
+    val version: Int = 1,
+    val ribaltaVersion: String,
+    val origin: String = "manual",
+    val createdAt: Long,
+    val updatedAt: Long,
+    val deletedAt: Long? = null,
 )
 
 @Serializable
@@ -87,9 +101,10 @@ data class ChangeSet(
     val decks: List<DeckDto> = emptyList(),
     val cards: List<CardDto> = emptyList(),
     val reviews: List<ReviewDto> = emptyList(),
+    val lessons: List<LessonDto> = emptyList(),
     val settings: SettingsDto? = null,
 ) {
-    val size: Int get() = decks.size + cards.size + reviews.size + (if (settings != null) 1 else 0)
+    val size: Int get() = decks.size + cards.size + reviews.size + lessons.size + (if (settings != null) 1 else 0)
 
     fun isEmpty(): Boolean = size == 0
 }
@@ -106,6 +121,7 @@ data class AppliedCounts(
     val cards: Int = 0,
     val reviews: Int = 0,
     val settings: Int = 0,
+    val lessons: Int = 0,
 )
 
 @Serializable

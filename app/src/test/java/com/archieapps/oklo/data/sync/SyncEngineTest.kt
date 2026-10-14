@@ -3,6 +3,7 @@ package com.archieapps.oklo.data.sync
 import com.archieapps.oklo.core.net.ApiResult
 import com.archieapps.oklo.core.net.CardDto
 import com.archieapps.oklo.core.net.DeckDto
+import com.archieapps.oklo.core.net.LessonDto
 import com.archieapps.oklo.core.net.ReviewDto
 import com.archieapps.oklo.core.net.SettingsDto
 import kotlinx.coroutines.test.runTest
@@ -275,5 +276,68 @@ class SyncEngineTest {
         assertFalse(SyncMerge.incomingWins(dirty, 99))
         assertTrue(SyncMerge.incomingWins(dirty, 100))
         assertTrue(SyncMerge.incomingWins(dirty, 101))
+    }
+
+    private fun lesson(id: String, deckId: String, source: String = "# Aula", at: Long = 1_000, version: Int = 1, deletedAt: Long? = null) =
+        LessonDto(id = id, deckId = deckId, source = source, version = version, ribaltaVersion = "0.3.0", origin = "manual", createdAt = at, updatedAt = at, deletedAt = deletedAt)
+
+    @Test
+    fun `lessons and card lesson targets travel from one device to another`() = runTest {
+        val server = FakeServer()
+        val a = InMemorySyncStore()
+        a.putDeck(deck("d1"))
+        a.putCard(card("c1", "d1").copy(lessonTarget = "anchor:fase-clara"))
+        a.putLesson(lesson("l1", "d1", source = "# Fotossíntese {#fotossintese}"))
+
+        SyncEngine(a, server.remote()).sync()
+
+        assertEquals(0, a.dirtyCount())
+        assertEquals("anchor:fase-clara", server.cards.getValue("c1").row.lessonTarget)
+        val b = InMemorySyncStore()
+        SyncEngine(b, server.remote()).sync()
+        assertEquals("# Fotossíntese {#fotossintese}", b.lessons.getValue("l1").row.source)
+        assertEquals("0.3.0", b.lessons.getValue("l1").row.ribaltaVersion)
+        assertEquals("anchor:fase-clara", b.cards.getValue("c1").row.lessonTarget)
+        assertEquals(0, b.dirtyCount())
+    }
+
+    @Test
+    fun `lesson last write wins and tombstones propagate`() = runTest {
+        val server = FakeServer()
+        val a = InMemorySyncStore()
+        val b = InMemorySyncStore()
+        a.putLesson(lesson("l1", "d1", source = "original", at = 1_000))
+        SyncEngine(a, server.remote()).sync()
+        SyncEngine(b, server.remote()).sync()
+
+        a.putLesson(lesson("l1", "d1", source = "A", at = 3_000, version = 2))
+        b.putLesson(lesson("l1", "d1", source = "B", at = 2_000, version = 2))
+        SyncEngine(a, server.remote()).sync()
+        SyncEngine(b, server.remote()).sync()
+        SyncEngine(a, server.remote()).sync()
+
+        assertEquals("A", a.lessons.getValue("l1").row.source)
+        assertEquals("A", b.lessons.getValue("l1").row.source)
+        assertEquals(0, a.dirtyCount())
+        assertEquals(0, b.dirtyCount())
+
+        a.putLesson(lesson("l1", "d1", source = "A", at = 4_000, version = 3, deletedAt = 4_000))
+        SyncEngine(a, server.remote()).sync()
+        SyncEngine(b, server.remote()).sync()
+        assertEquals(4_000L, b.lessons.getValue("l1").row.deletedAt)
+    }
+
+    @Test
+    fun `a second lesson id for the same deck is rejected and recorded`() = runTest {
+        val server = FakeServer()
+        val a = InMemorySyncStore()
+        a.putLesson(lesson("l1", "d1"))
+        SyncEngine(a, server.remote()).sync()
+        a.putLesson(lesson("l2", "d1", at = 2_000))
+
+        SyncEngine(a, server.remote()).sync()
+
+        assertEquals(listOf("lesson"), a.rejected.map { it.entity })
+        assertEquals(setOf("l1"), server.lessons.keys)
     }
 }

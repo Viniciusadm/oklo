@@ -2,6 +2,7 @@ package com.archieapps.oklo.data.db
 
 import com.archieapps.oklo.core.net.CardDto
 import com.archieapps.oklo.core.net.DeckDto
+import com.archieapps.oklo.core.net.LessonDto
 import com.archieapps.oklo.core.net.OkloJson
 import com.archieapps.oklo.core.net.ReviewDto
 import com.archieapps.oklo.core.net.SettingsDto
@@ -14,6 +15,7 @@ import com.archieapps.oklo.data.model.CardType
 import com.archieapps.oklo.data.model.Choice
 import com.archieapps.oklo.data.model.Deck
 import com.archieapps.oklo.data.model.LibrarySort
+import com.archieapps.oklo.data.model.Lesson
 import com.archieapps.oklo.data.model.ReviewStat
 import com.archieapps.oklo.data.model.StudySettings
 import kotlinx.serialization.builtins.ListSerializer
@@ -61,6 +63,7 @@ fun CardEntity.toModel(): Card = Card(
     position = position,
     createdAt = createdAt,
     updatedAt = updatedAt,
+    lessonTarget = lessonTarget,
 )
 
 fun CardEntity.toDto(): CardDto = CardDto(
@@ -85,6 +88,7 @@ fun CardEntity.toDto(): CardDto = CardDto(
     createdAt = createdAt,
     updatedAt = updatedAt,
     deletedAt = deletedAt,
+    lessonTarget = lessonTarget,
 )
 
 fun CardDto.toEntity(dirty: Boolean): CardEntity = CardEntity(
@@ -109,8 +113,18 @@ fun CardDto.toEntity(dirty: Boolean): CardEntity = CardEntity(
     createdAt = createdAt,
     updatedAt = updatedAt,
     deletedAt = deletedAt,
+    lessonTarget = lessonTarget,
     dirty = dirty,
 )
+
+fun LessonEntity.toModel(): Lesson =
+    Lesson(id, deckId, source, version, ribaltaVersion, origin, createdAt, updatedAt)
+
+fun LessonEntity.toDto(): LessonDto =
+    LessonDto(id, deckId, source, version, ribaltaVersion, origin, createdAt, updatedAt, deletedAt)
+
+fun LessonDto.toEntity(dirty: Boolean): LessonEntity =
+    LessonEntity(id, deckId, source, version, ribaltaVersion, origin, createdAt, updatedAt, deletedAt, dirty)
 
 fun ReviewEntity.toDto(): ReviewDto = ReviewDto(
     id, cardId, rating, stateBefore, stabilityAfter, difficultyAfter, scheduledSeconds, durationMs,

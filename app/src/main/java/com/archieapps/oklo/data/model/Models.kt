@@ -127,6 +127,18 @@ data class Card(
     val position: Int,
     val createdAt: Long,
     val updatedAt: Long,
+    val lessonTarget: String? = null,
+)
+
+data class Lesson(
+    val id: String,
+    val deckId: String,
+    val source: String,
+    val version: Int,
+    val ribaltaVersion: String,
+    val origin: String,
+    val createdAt: Long,
+    val updatedAt: Long,
 )
 
 data class CardStat(

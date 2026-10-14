@@ -19,7 +19,7 @@ class StudyWritesTest {
         id = id, deckId = "d1", type = "basic", front = "F", back = "V", explanation = null, answer = null,
         choicesJson = null, state = "new", step = null, stability = null, difficulty = null, dueAt = null,
         lastReviewAt = null, reps = 0, lapses = 0, suspended = false, position = 0, createdAt = 100,
-        updatedAt = 100, deletedAt = null, dirty = false,
+        updatedAt = 100, deletedAt = null, lessonTarget = null, dirty = false,
     )
 
     @Test
