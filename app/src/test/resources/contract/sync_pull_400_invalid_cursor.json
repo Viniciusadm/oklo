@@ -1,0 +1,14 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/flashcards/sync/pull?since=0&cursor=bogus",
+    "body": null,
+    "codeHeader": false
+  },
+  "status": 400,
+  "response": {
+    "message": "Cursor inválido.",
+    "error": null,
+    "success": false
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/flashcards/sync/push",
+    "body": {
+      "changes": {}
+    },
+    "codeHeader": false
+  },
+  "status": 400,
+  "response": {
+    "message": "Alguns campos não foram preenchidos corretamente.",
+    "error": "The device id field is required.",
+    "success": false
+  }
+}

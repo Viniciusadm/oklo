@@ -1,0 +1,70 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/flashcards/sync/pull?since=0&limit=3",
+    "body": null,
+    "codeHeader": false
+  },
+  "status": 200,
+  "response": {
+    "message": "Alterações retornadas.",
+    "body": {
+      "changes": {
+        "decks": [
+          {
+            "id": "2fa5687d-c675-4a00-b5fc-dc4befeb30d3",
+            "parentId": "b015a096-ef70-4d04-8f09-ab0eea93c44a",
+            "name": "PHP",
+            "position": 1,
+            "lastStudiedAt": null,
+            "createdAt": 1791374400000,
+            "updatedAt": 1791460800000,
+            "deletedAt": null
+          },
+          {
+            "id": "b015a096-ef70-4d04-8f09-ab0eea93c44a",
+            "parentId": null,
+            "name": "Programação",
+            "position": 0,
+            "lastStudiedAt": 1791460800000,
+            "createdAt": 1791374400000,
+            "updatedAt": 1791460800000,
+            "deletedAt": null
+          }
+        ],
+        "cards": [
+          {
+            "id": "04e690b7-0714-4b28-80d1-87692a9dbee3",
+            "deckId": "2fa5687d-c675-4a00-b5fc-dc4befeb30d3",
+            "type": "qa",
+            "front": "Para que serve o Eloquent?",
+            "back": "É o ORM do Laravel.",
+            "explanation": null,
+            "answer": null,
+            "choices": null,
+            "state": "learning",
+            "step": 1,
+            "stability": 0.4,
+            "difficulty": 6.1,
+            "dueAt": null,
+            "lastReviewAt": null,
+            "reps": 0,
+            "lapses": 0,
+            "suspended": false,
+            "position": 0,
+            "createdAt": 1791374400000,
+            "updatedAt": 1791460800000,
+            "deletedAt": null
+          }
+        ],
+        "reviews": [],
+        "settings": null
+      },
+      "usn": 1,
+      "nextCursor": "eyJtIjoicHVsbCIsImYiOjAsInUiOjEsImUiOiJjYXJkcyIsInMiOjEsImkiOiIwNGU2OTBiNy0wNzE0LTRiMjgtODBkMS04NzY5MmE5ZGJlZTMifQ"
+    },
+    "misc": null,
+    "error": null,
+    "success": true
+  }
+}

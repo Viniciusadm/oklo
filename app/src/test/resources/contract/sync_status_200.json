@@ -1,0 +1,24 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/flashcards/sync/status",
+    "body": null,
+    "codeHeader": false
+  },
+  "status": 200,
+  "response": {
+    "message": "Dados retornados com sucesso.",
+    "body": {
+      "usn": 1,
+      "counts": {
+        "decks": 2,
+        "cards": 2,
+        "reviews": 1
+      },
+      "lastSyncAt": "2026-10-08 20:21:04"
+    },
+    "misc": null,
+    "error": null,
+    "success": true
+  }
+}

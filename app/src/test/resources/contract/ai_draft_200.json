@@ -1,0 +1,78 @@
+{
+    "request": {
+        "method": "POST",
+        "path": "/api/flashcards/ai/draft",
+        "body": {
+            "text": "O Eloquent é o ORM do Laravel. Ele gera o SQL a partir dos métodos do model. As rotas de API ficam em routes/api.php.",
+            "deckPath": "Programação / PHP / Laravel",
+            "maxCards": null,
+            "difficulty": "auto",
+            "types": [],
+            "model": "flash"
+        },
+        "codeHeader": true
+    },
+    "status": 200,
+    "response": {
+        "message": "Cards gerados.",
+        "body": {
+            "cards": [
+                {
+                    "type": "qa",
+                    "front": "Para que serve o Eloquent no Laravel?",
+                    "back": "É o ORM do Laravel, que permite interagir com bancos usando modelos.",
+                    "explanation": null,
+                    "answer": null,
+                    "choices": null
+                },
+                {
+                    "type": "true_false",
+                    "front": "O Eloquent exige escrever SQL manualmente para toda consulta.",
+                    "back": null,
+                    "explanation": "O Eloquent gera o SQL a partir dos métodos do model.",
+                    "answer": false,
+                    "choices": null
+                },
+                {
+                    "type": "multiple_choice",
+                    "front": "Qual arquivo define as rotas de API no Laravel?",
+                    "back": null,
+                    "explanation": null,
+                    "answer": null,
+                    "choices": [
+                        {
+                            "text": "routes/api.php",
+                            "correct": true
+                        },
+                        {
+                            "text": "composer.json",
+                            "correct": false
+                        },
+                        {
+                            "text": ".env",
+                            "correct": false
+                        }
+                    ]
+                },
+                {
+                    "type": "basic",
+                    "front": "Eloquent",
+                    "back": "ORM do Laravel.",
+                    "explanation": null,
+                    "answer": null,
+                    "choices": null
+                }
+            ]
+        },
+        "misc": {
+            "model": "deepseek-flash",
+            "discarded": 1,
+            "warnings": [
+                "1 card descartado: múltipla escolha precisa de exatamente uma alternativa correta."
+            ]
+        },
+        "error": null,
+        "success": true
+    },
+    "note": "DeepSeek substituida por fake em processo; passa por auth:sanctum, safe e throttle reais."
+}

@@ -1,0 +1,68 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/flashcards/sync/push",
+    "body": {
+      "deviceId": "f62db7d7-ae29-41ab-998c-0d92b0e5ec4e",
+      "changes": {
+        "decks": [
+          {
+            "id": "b015a096-ef70-4d04-8f09-ab0eea93c44a",
+            "parentId": null,
+            "name": "Velho",
+            "position": 0,
+            "lastStudiedAt": null,
+            "createdAt": 1791374400000,
+            "updatedAt": 1791374400000,
+            "deletedAt": null
+          }
+        ],
+        "reviews": [
+          {
+            "id": "3db6f13c-e55b-4cfe-adde-07602dc03c50",
+            "cardId": "8c806f18-fcee-43b7-a320-fc82c808d259",
+            "rating": 3,
+            "stateBefore": "learning",
+            "stabilityAfter": 12.4512,
+            "difficultyAfter": 5.3127,
+            "scheduledSeconds": 950400,
+            "durationMs": 8200,
+            "answeredCorrect": true,
+            "reviewedAt": 1791460800000,
+            "createdAt": 1791460800000,
+            "updatedAt": 1791460800000,
+            "deletedAt": null
+          }
+        ]
+      }
+    },
+    "codeHeader": false
+  },
+  "status": 200,
+  "response": {
+    "message": "Alterações recebidas.",
+    "body": {
+      "usn": 1,
+      "applied": {
+        "decks": 0,
+        "cards": 0,
+        "reviews": 0,
+        "settings": 0
+      },
+      "skipped": [
+        {
+          "entity": "deck",
+          "id": "b015a096-ef70-4d04-8f09-ab0eea93c44a"
+        },
+        {
+          "entity": "review",
+          "id": "3db6f13c-e55b-4cfe-adde-07602dc03c50"
+        }
+      ],
+      "rejected": []
+    },
+    "misc": null,
+    "error": null,
+    "success": true
+  }
+}

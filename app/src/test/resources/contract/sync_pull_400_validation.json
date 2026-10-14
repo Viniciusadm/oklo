@@ -1,0 +1,14 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/flashcards/sync/pull",
+    "body": null,
+    "codeHeader": false
+  },
+  "status": 400,
+  "response": {
+    "message": "Alguns campos não foram preenchidos corretamente.",
+    "error": "The since field is required.",
+    "success": false
+  }
+}

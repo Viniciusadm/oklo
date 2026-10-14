@@ -1,0 +1,61 @@
+{
+    "message": "Cards gerados.",
+    "body": {
+        "cards": [
+            {
+                "type": "qa",
+                "front": "Para que serve o Eloquent no Laravel?",
+                "back": "É o ORM do Laravel.",
+                "explanation": null,
+                "answer": null,
+                "choices": null
+            },
+            {
+                "type": "true_false",
+                "front": "O Eloquent exige SQL manual em toda consulta.",
+                "back": null,
+                "explanation": "O Eloquent gera o SQL.",
+                "answer": false,
+                "choices": null
+            },
+            {
+                "type": "multiple_choice",
+                "front": "Qual arquivo define rotas de API?",
+                "back": null,
+                "explanation": null,
+                "answer": null,
+                "choices": [
+                    {
+                        "text": "routes/api.php",
+                        "correct": true
+                    },
+                    {
+                        "text": ".env",
+                        "correct": false
+                    }
+                ]
+            },
+            {
+                "type": "basic",
+                "front": "Eloquent",
+                "back": "ORM do Laravel",
+                "explanation": null,
+                "answer": null,
+                "choices": null
+            }
+        ]
+    },
+    "misc": {
+        "model": "deepseek-flash",
+        "discarded": 5,
+        "warnings": [
+            "1 card descartado: múltipla escolha precisa de exatamente uma alternativa correta.",
+            "1 card descartado: frente repetida.",
+            "1 card descartado: tipo de card inválido.",
+            "1 card descartado: verdadeiro ou falso precisa da resposta true ou false.",
+            "1 card descartado: card em formato inválido."
+        ]
+    },
+    "error": null,
+    "success": true
+}

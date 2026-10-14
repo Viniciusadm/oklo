@@ -1,0 +1,42 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/flashcards/sync/pull?since=0&limit=3&cursor=eyJtIjoicHVsbCIsImYiOjAsInUiOjEsImUiOiJzZXR0aW5ncyIsInMiOjAsImkiOiIifQ",
+    "body": null,
+    "codeHeader": false
+  },
+  "status": 200,
+  "response": {
+    "message": "Alterações retornadas.",
+    "body": {
+      "changes": {
+        "decks": [],
+        "cards": [],
+        "reviews": [],
+        "settings": {
+          "id": "global",
+          "newPerDay": 20,
+          "reviewsPerDay": 200,
+          "desiredRetention": 0.9,
+          "learningStepsMinutes": [
+            1,
+            10
+          ],
+          "relearningStepsMinutes": [
+            10
+          ],
+          "maximumIntervalDays": 36500,
+          "enableFuzz": true,
+          "librarySort": "name",
+          "aiModel": "flash",
+          "updatedAt": 1791460800000
+        }
+      },
+      "usn": 1,
+      "nextCursor": null
+    },
+    "misc": null,
+    "error": null,
+    "success": true
+  }
+}

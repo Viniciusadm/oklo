@@ -1,0 +1,22 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/flashcards/ai/status",
+    "body": null,
+    "codeHeader": false
+  },
+  "status": 200,
+  "response": {
+    "message": "Dados retornados com sucesso.",
+    "body": {
+      "configured": false,
+      "models": {
+        "flash": "deepseek-flash",
+        "pro": "deepseek-flash"
+      }
+    },
+    "misc": null,
+    "error": null,
+    "success": true
+  }
+}

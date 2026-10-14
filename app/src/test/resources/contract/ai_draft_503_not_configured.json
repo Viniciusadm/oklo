@@ -1,0 +1,21 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/flashcards/ai/draft",
+    "body": {
+      "text": "O Eloquent é o ORM do Laravel.",
+      "deckPath": "Programação / PHP",
+      "maxCards": null,
+      "difficulty": "auto",
+      "types": [],
+      "model": "flash"
+    },
+    "codeHeader": true
+  },
+  "status": 503,
+  "response": {
+    "message": "IA não configurada.",
+    "error": null,
+    "success": false
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/flashcards/sync/snapshot",
+    "body": null,
+    "codeHeader": false
+  },
+  "status": 400,
+  "response": {
+    "message": "Código inválido",
+    "error": null,
+    "success": false
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/flashcards/ai/draft",
+    "codeHeader": true
+  },
+  "status": 429,
+  "headers": {
+    "Retry-After": "50"
+  },
+  "response": {
+    "message": "Too Many Attempts."
+  },
+  "note": "Sem o envelope do JsonPattern. Localmente (APP_DEBUG=true) o corpo traz tambem exception/file/line/trace; em producao vem so message."
+}

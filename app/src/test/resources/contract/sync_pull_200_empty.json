@@ -1,0 +1,25 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/flashcards/sync/pull?since=1",
+    "body": null,
+    "codeHeader": false
+  },
+  "status": 200,
+  "response": {
+    "message": "Alterações retornadas.",
+    "body": {
+      "changes": {
+        "decks": [],
+        "cards": [],
+        "reviews": [],
+        "settings": null
+      },
+      "usn": 1,
+      "nextCursor": null
+    },
+    "misc": null,
+    "error": null,
+    "success": true
+  }
+}
