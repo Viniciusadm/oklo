@@ -11,6 +11,7 @@ import com.archieapps.oklo.data.repo.DraftBatch
 import com.archieapps.oklo.data.repo.DraftItem
 import com.archieapps.oklo.data.repo.LessonGenerator
 import com.archieapps.oklo.data.repo.LessonJobState
+import com.archieapps.oklo.data.repo.LessonOptionResolver
 import com.archieapps.oklo.data.repo.LessonJobTracker
 import com.archieapps.oklo.data.sync.SyncReport
 import kotlinx.coroutines.Dispatchers
@@ -112,7 +113,7 @@ class AiReviewViewModelTest {
                 savedContents += contents
                 contents.size
             },
-            lessonOriginOf = { lessonOrigin },
+            lessonOptions = LessonOptionResolver { lessonOrigin },
             isSignedIn = { signedIn },
             requestSync = { events += "requestSync" },
             syncNow = {
@@ -312,5 +313,38 @@ class AiReviewViewModelTest {
         runCurrent()
         assertFalse(vm.saving.value)
         assertEquals(AiReviewViewModel.LESSON_START_FAILED, vm.summary.value?.lessonMessage)
+    }
+
+    @Test
+    fun reviewStartsWithTheChoiceCarriedInTheBatch() = runTest {
+        lessonOrigin = null
+        draft.batch.value = draft.batch.value!!.copy(generateLesson = false)
+        val vm = viewModel()
+        runCurrent()
+        assertFalse(vm.lessonOption.value.checked)
+        vm.setGenerateLesson(true)
+        assertTrue(vm.lessonOption.value.checked)
+    }
+
+    @Test
+    fun carriedChoiceKeepsManualReplacementWarning() = runTest {
+        lessonOrigin = "manual"
+        draft.batch.value = draft.batch.value!!.copy(generateLesson = true)
+        val vm = viewModel()
+        runCurrent()
+        assertTrue(vm.lessonOption.value.checked)
+        assertTrue(vm.lessonOption.value.replacesManualLesson)
+    }
+
+    @Test
+    fun changingDeckInReviewRecomputesTheDefault() = runTest {
+        lessonOrigin = null
+        draft.batch.value = draft.batch.value!!.copy(generateLesson = false)
+        val vm = viewModel()
+        runCurrent()
+        lessonOrigin = "ai"
+        vm.changeDeck("deck-2")
+        runCurrent()
+        assertTrue(vm.lessonOption.value.checked)
     }
 }

@@ -12,6 +12,8 @@ import com.archieapps.oklo.data.repo.DraftBatch
 import com.archieapps.oklo.data.repo.DraftItem
 import com.archieapps.oklo.data.repo.LessonGenerator
 import com.archieapps.oklo.data.repo.LessonJobTracker
+import com.archieapps.oklo.data.repo.LessonOption
+import com.archieapps.oklo.data.repo.LessonOptionResolver
 import com.archieapps.oklo.data.repo.newId
 import com.archieapps.oklo.data.sync.SyncReport
 import com.archieapps.oklo.domain.DeckNode
@@ -38,13 +40,12 @@ data class AddSummary(
     val lessonMessage: String? = null,
 )
 
-data class LessonOption(val checked: Boolean = false, val replacesManualLesson: Boolean = false)
 
 class AiReviewViewModel(
     private val draft: AiDraftStore,
     private val deckExists: suspend (String) -> Boolean,
     private val createCards: suspend (String, List<CardContent>) -> Int,
-    private val lessonOriginOf: suspend (String) -> String?,
+    private val lessonOptions: LessonOptionResolver,
     private val isSignedIn: suspend () -> Boolean,
     private val requestSync: () -> Unit,
     private val syncNow: suspend () -> SyncReport?,
@@ -59,7 +60,7 @@ class AiReviewViewModel(
         draft = container.aiDraft,
         deckExists = { container.decks.get(it) != null },
         createCards = { deckId, contents -> container.cards.createMany(deckId, contents).size },
-        lessonOriginOf = { container.lessons.get(it)?.origin },
+        lessonOptions = LessonOptionResolver { container.lessons.get(it)?.origin },
         isSignedIn = { container.sessionStore.load().signedIn },
         requestSync = container.sync::requestSync,
         syncNow = container.sync::syncIfSignedIn,
@@ -83,10 +84,10 @@ class AiReviewViewModel(
 
     init {
         viewModelScope.launch {
+            var carried = batch.value?.generateLesson
             batch.map { it?.deckId }.filterNotNull().distinctUntilChanged().collect { deckId ->
-                val origin = lessonOriginOf(deckId)
-                val manual = origin != null && origin != ORIGIN_AI
-                lessonOption.value = LessonOption(checked = !manual, replacesManualLesson = manual)
+                lessonOption.value = lessonOptions.resolve(deckId, carried)
+                carried = null
             }
         }
     }
@@ -149,7 +150,7 @@ class AiReviewViewModel(
                 }.onSuccess { created ->
                     val path = DeckTree.find(roots.value, current.deckId)?.pathLabel ?: ""
                     draft.batch.value = null
-                    draft.form.update { it.copy(text = "") }
+                    draft.form.update { it.copy(text = "", generateLesson = null) }
                     val signedIn = runCatching { isSignedIn() }.getOrDefault(false)
                     val base = AddSummary(created, current.items.size - chosen.size, current.deckId, path, signedIn)
                     val message = if (generateLesson) attemptLesson(current.deckId, current.sourceText) else null
@@ -205,7 +206,6 @@ class AiReviewViewModel(
     }
 
     companion object {
-        private const val ORIGIN_AI = "ai"
         const val LESSON_START_FAILED = "Os cards foram salvos, mas não foi possível iniciar a aula agora. Você pode gerar a aula depois, no deck."
         const val LESSON_NEEDS_SIGN_IN = "Os cards foram salvos. Entre na conta para gerar a aula depois, no deck."
     }

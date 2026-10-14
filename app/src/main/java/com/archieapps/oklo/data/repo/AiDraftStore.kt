@@ -17,6 +17,7 @@ data class AiForm(
     val maxCards: Int? = null,
     val difficulty: DraftDifficulty = DraftDifficulty.Auto,
     val types: Set<CardType> = emptySet(),
+    val generateLesson: Boolean? = null,
 )
 
 data class DraftItem(
@@ -32,6 +33,7 @@ data class DraftBatch(
     val warnings: List<String>,
     val model: String?,
     val sourceText: String = "",
+    val generateLesson: Boolean? = null,
 )
 
 class AiDraftStore {
@@ -41,5 +43,19 @@ class AiDraftStore {
     fun reset() {
         form.value = AiForm(deckId = form.value.deckId)
         batch.value = null
+    }
+}
+
+data class LessonOption(val checked: Boolean = false, val replacesManualLesson: Boolean = false)
+
+class LessonOptionResolver(private val lessonOriginOf: suspend (String) -> String?) {
+    suspend fun resolve(deckId: String, choice: Boolean?): LessonOption {
+        val origin = lessonOriginOf(deckId)
+        val manual = origin != null && origin != ORIGIN_AI
+        return LessonOption(checked = choice ?: !manual, replacesManualLesson = manual)
+    }
+
+    private companion object {
+        const val ORIGIN_AI = "ai"
     }
 }

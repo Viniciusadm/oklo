@@ -84,6 +84,7 @@ fun AiCreateScreen(navigator: AppNavigator, deckId: String?) {
     val readiness by viewModel.readiness.collectAsStateWithLifecycle()
     val pending by viewModel.pendingBatch.collectAsStateWithLifecycle()
     val model by viewModel.model.collectAsStateWithLifecycle()
+    val lessonOption by viewModel.lessonOption.collectAsStateWithLifecycle()
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
     var pickDeck by remember { mutableStateOf(false) }
@@ -304,6 +305,7 @@ fun AiCreateScreen(navigator: AppNavigator, deckId: String?) {
                     }
                 }
             } else {
+                GenerateLessonOption(lessonOption, onChange = viewModel::setGenerateLesson)
                 PrimaryButton("Gerar cards", onClick = viewModel::generate, icon = R.drawable.ic_sparkle, enabled = !tooLongNow(form.text.length))
             }
         }

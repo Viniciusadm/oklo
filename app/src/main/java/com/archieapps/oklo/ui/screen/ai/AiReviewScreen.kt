@@ -210,22 +210,7 @@ fun AiReviewScreen(navigator: AppNavigator) {
             verticalArrangement = Arrangement.spacedBy(Spacing.sm),
         ) {
             error?.let { Notice(it, tone = NoticeTone.Error) }
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 44.dp)
-                    .toggleable(value = lessonOption.checked, role = Role.Checkbox, onValueChange = viewModel::setGenerateLesson),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                CheckMark(checked = lessonOption.checked)
-                Spacer(Modifier.width(Spacing.sm))
-                Column(Modifier.weight(1f)) {
-                    Text("Gerar aula junto", style = MaterialTheme.typography.labelLarge)
-                    if (lessonOption.replacesManualLesson) {
-                        Text("Substitui a aula atual", style = MaterialTheme.typography.bodySmall, color = okloPalette.muted)
-                    }
-                }
-            }
+            GenerateLessonOption(lessonOption, onChange = viewModel::setGenerateLesson)
             PrimaryButton(
                 if (selected == 0) "Selecione cards para adicionar" else "Adicionar ${plural(selected, "card", "cards")} ao deck",
                 onClick = viewModel::addSelected,

@@ -14,6 +14,8 @@ import com.archieapps.oklo.data.repo.AiRepository
 import com.archieapps.oklo.data.repo.DraftBatch
 import com.archieapps.oklo.data.repo.DraftDifficulty
 import com.archieapps.oklo.data.repo.DraftItem
+import com.archieapps.oklo.data.repo.LessonOption
+import com.archieapps.oklo.data.repo.LessonOptionResolver
 import com.archieapps.oklo.data.repo.newId
 import com.archieapps.oklo.domain.DeckNode
 import com.archieapps.oklo.domain.DeckTree
@@ -63,6 +65,14 @@ class AiCreateViewModel(private val container: Container, initialDeckId: String?
         DeckTree.build(decks, emptyList(), LocalDay.window(System.currentTimeMillis()), settings.librarySort)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    private val lessonOptions = LessonOptionResolver { container.lessons.get(it)?.origin }
+
+    val lessonOption: StateFlow<LessonOption> = container.aiDraft.form
+        .map { it.deckId to it.generateLesson }
+        .distinctUntilChanged()
+        .map { (deckId, choice) -> if (deckId == null) LessonOption(checked = choice ?: true) else lessonOptions.resolve(deckId, choice) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LessonOption(checked = true))
+
     val model: StateFlow<String> = container.settings.settings.map { it.aiModel.label }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
 
@@ -92,7 +102,9 @@ class AiCreateViewModel(private val container: Container, initialDeckId: String?
         if (error.value?.kind == AiErrorKind.Validation || error.value?.kind == AiErrorKind.TooLong) error.value = null
     }
 
-    fun chooseDeck(id: String?) = container.aiDraft.form.update { it.copy(deckId = id) }
+    fun chooseDeck(id: String?) = container.aiDraft.form.update { it.copy(deckId = id, generateLesson = null) }
+
+    fun setGenerateLesson(checked: Boolean) = container.aiDraft.form.update { it.copy(generateLesson = checked) }
 
     fun setMaxCards(value: Int?) = container.aiDraft.form.update { it.copy(maxCards = value) }
 
@@ -166,6 +178,7 @@ class AiCreateViewModel(private val container: Container, initialDeckId: String?
                         warnings = result.data.misc.warnings,
                         model = result.data.misc.model,
                         sourceText = text,
+                        generateLesson = lessonOption.value.checked,
                     )
                     _navigateToReview.tryEmit(Unit)
                 }
