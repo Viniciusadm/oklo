@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.archieapps.oklo.Container
 import com.archieapps.oklo.core.time.LocalDay
 import com.archieapps.oklo.data.model.Card
+import com.archieapps.oklo.data.model.Lesson
 import com.archieapps.oklo.domain.DeckNode
 import com.archieapps.oklo.domain.DeckTree
 import com.archieapps.oklo.ui.common.DeckOperations
@@ -33,6 +34,10 @@ class DeckViewModel(private val container: Container, val deckId: String) : View
     val tab = MutableStateFlow<DeckTab?>(null)
     val reorder = MutableStateFlow<List<String>?>(null)
     val operations = DeckOperations(container, viewModelScope)
+    private val studyEntry = StudyEntry(container.lessons)
+
+    val lesson: StateFlow<Lesson?> = container.lessons.observeByDeck(deckId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val ui: StateFlow<DeckUi?> = combine(
         container.decks.decks,
@@ -46,6 +51,10 @@ class DeckViewModel(private val container: Container, val deckId: String) : View
         val node = DeckTree.find(roots, deckId)
         if (node == null) DeckUi.Missing else DeckUi.Ready(node, roots, cards.distinctBy { it.id }, now)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun study(deckId: String, navigate: (String) -> Unit) {
+        viewModelScope.launch { navigate(studyEntry.route(deckId)) }
+    }
 
     fun selectTab(value: DeckTab) {
         tab.value = value

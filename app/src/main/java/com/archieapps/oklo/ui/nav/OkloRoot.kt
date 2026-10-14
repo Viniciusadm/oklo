@@ -53,12 +53,15 @@ import com.archieapps.oklo.ui.screen.connect.ConnectScreen
 import com.archieapps.oklo.ui.screen.deck.DeckScreen
 import com.archieapps.oklo.ui.screen.editor.CardEditorScreen
 import com.archieapps.oklo.ui.screen.home.HomeScreen
+import com.archieapps.oklo.ui.screen.lesson.LessonMode
+import com.archieapps.oklo.ui.screen.lesson.LessonScreen
 import com.archieapps.oklo.ui.screen.library.LibraryScreen
 import com.archieapps.oklo.ui.screen.settings.SettingsScreen
 import com.archieapps.oklo.ui.screen.settings.SettingsSection
 import com.archieapps.oklo.ui.screen.settings.SettingsSectionScreen
 import com.archieapps.oklo.ui.screen.stats.StatsScreen
 import com.archieapps.oklo.ui.screen.study.StudyScreen
+import java.net.URLEncoder
 
 object Routes {
     const val HOME = "home"
@@ -72,6 +75,7 @@ object Routes {
     const val AI_REVIEW = "ai/review"
     const val STUDY = "study?deckId={deckId}"
     const val CONNECT = "connect"
+    const val LESSON = "lesson/{deckId}?mode={mode}&target={target}"
 
     fun stats(deckId: String? = null) = if (deckId == null) "stats" else "stats?deckId=$deckId"
     fun settingsSection(section: SettingsSection) = "settings/${section.key}"
@@ -80,7 +84,14 @@ object Routes {
     fun editCard(cardId: String) = "editor?cardId=$cardId"
     fun aiCreate(deckId: String? = null) = if (deckId == null) "ai/create" else "ai/create?deckId=$deckId"
     fun study(deckId: String? = null) = if (deckId == null) "study" else "study?deckId=$deckId"
+
+    fun lesson(deckId: String, mode: LessonRouteMode = LessonRouteMode.Read, target: String? = null): String {
+        val base = "lesson/$deckId?mode=${mode.key}"
+        return if (target.isNullOrEmpty()) base else base + "&target=" + URLEncoder.encode(target, "UTF-8")
+    }
 }
+
+enum class LessonRouteMode(val key: String) { Gate("gate"), Read("read"), Target("target") }
 
 private data class TabItem(
     val route: String,
@@ -203,6 +214,21 @@ fun OkloRoot() {
                     StudyScreen(navigator, backStack.arguments?.getString("deckId"))
                 }
                 composable(Routes.CONNECT) { ConnectScreen(navigator) }
+                composable(
+                    Routes.LESSON,
+                    arguments = listOf(
+                        navArgument("deckId") { type = NavType.StringType },
+                        navArgument("mode") { type = NavType.StringType; defaultValue = "read" },
+                        navArgument("target") { type = NavType.StringType; nullable = true; defaultValue = null },
+                    ),
+                ) { backStack ->
+                    LessonScreen(
+                        navigator,
+                        deckId = backStack.arguments?.getString("deckId").orEmpty(),
+                        mode = LessonMode.of(backStack.arguments?.getString("mode")),
+                        target = backStack.arguments?.getString("target"),
+                    )
+                }
             }
         }
     }

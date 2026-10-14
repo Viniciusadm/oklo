@@ -74,6 +74,7 @@ import com.archieapps.oklo.ui.components.plural
 import com.archieapps.oklo.ui.nav.AppNavigator
 import com.archieapps.oklo.ui.nav.Routes
 import com.archieapps.oklo.ui.nav.appViewModel
+import com.archieapps.oklo.ui.screen.lesson.lessonTitle
 import com.archieapps.oklo.ui.screen.library.deckSubtitle
 import com.archieapps.oklo.ui.screen.settings.SettingsSection
 import com.archieapps.oklo.ui.theme.Spacing
@@ -86,6 +87,7 @@ fun DeckScreen(navigator: AppNavigator, deckId: String) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val selectedTab by viewModel.tab.collectAsStateWithLifecycle()
     val reorder by viewModel.reorder.collectAsStateWithLifecycle()
+    val lesson by viewModel.lesson.collectAsStateWithLifecycle()
     val message by viewModel.operations.message.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -143,7 +145,9 @@ fun DeckScreen(navigator: AppNavigator, deckId: String) {
                     Summary(
                         node = node,
                         parentPath = pathParent,
-                        onStudy = { navigator.to(Routes.study(node.id)) },
+                        lessonTitle = lesson?.let { lessonTitle(it.source, node.deck.name) },
+                        onLesson = { navigator.to(Routes.lesson(node.id)) },
+                        onStudy = { viewModel.study(node.id, navigator::to) },
                         onAddCard = { navigator.to(Routes.newCard(node.id)) },
                         onAi = { navigator.to(Routes.aiCreate(node.id)) },
                         modifier = Modifier.padding(horizontal = Spacing.screenH).padding(top = Spacing.sm, bottom = Spacing.lg),
@@ -322,6 +326,8 @@ fun DeckScreen(navigator: AppNavigator, deckId: String) {
 private fun Summary(
     node: DeckNode,
     parentPath: String?,
+    lessonTitle: String?,
+    onLesson: () -> Unit,
     onStudy: () -> Unit,
     onAddCard: () -> Unit,
     onAi: () -> Unit,
@@ -341,6 +347,15 @@ private fun Summary(
         }
         if (counts.suspended > 0) {
             Text(plural(counts.suspended, "card suspenso", "cards suspensos") + " fora dos estudos.", style = MaterialTheme.typography.bodySmall, color = palette.muted)
+        }
+        if (lessonTitle != null) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.sm), modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                    Eyebrow("Aula")
+                    Text(lessonTitle, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
+                SecondaryButton("Ver aula", onClick = onLesson)
+            }
         }
         val canStudy = counts.pending + counts.newCount > 0
         Column(Modifier.padding(top = Spacing.xs), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
