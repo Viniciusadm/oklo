@@ -135,9 +135,6 @@ interface LessonDao {
     @Query("SELECT * FROM lessons WHERE deckId = :deckId")
     suspend fun getByDeck(deckId: String): LessonEntity?
 
-    @Query("SELECT * FROM lessons WHERE id = :id")
-    suspend fun get(id: String): LessonEntity?
-
     @Upsert
     suspend fun upsert(lesson: LessonEntity)
 

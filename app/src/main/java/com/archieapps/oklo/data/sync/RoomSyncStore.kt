@@ -68,8 +68,14 @@ class RoomSyncStore(
             if (changes.decks.isNotEmpty()) db.decks().upsertAll(changes.decks.map { it.toEntity(dirty = false) })
             if (changes.cards.isNotEmpty()) db.cards().upsertAll(changes.cards.map { it.toEntity(dirty = false) })
             if (changes.reviews.isNotEmpty()) db.reviews().insertAll(changes.reviews.map { it.toEntity(dirty = false) })
-            changes.lessons.forEach { db.lessons().deleteOtherForDeck(it.deckId, it.id) }
-            if (changes.lessons.isNotEmpty()) db.lessons().upsertAll(changes.lessons.map { it.toEntity(dirty = false) })
+            if (changes.lessons.isNotEmpty()) {
+                val resolved = changes.lessons.map { incoming ->
+                    val other = db.lessons().getByDeck(incoming.deckId)?.takeIf { it.id != incoming.id }
+                    other?.let { db.lessons().deleteOtherForDeck(incoming.deckId, incoming.id) }
+                    LessonDeckMerge.resolve(other, incoming)
+                }
+                db.lessons().upsertAll(resolved)
+            }
             changes.settings?.let { db.settings().upsert(it.toEntity(dirty = false)) }
         }
     }

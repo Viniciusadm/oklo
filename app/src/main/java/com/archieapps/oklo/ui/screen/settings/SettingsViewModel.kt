@@ -42,8 +42,9 @@ class SettingsViewModel(private val container: Container) : ViewModel() {
         container.database.decks().observeDirtyCount(),
         container.database.cards().observeDirtyCount(),
         container.database.reviews().observeDirtyCount(),
+        container.database.lessons().observeDirtyCount(),
         container.database.settings().observeDirtyCount(),
-    ) { decks, cards, reviews, settings -> decks + cards + reviews + settings }
+    ) { decks, cards, reviews, lessons, settings -> decks + cards + reviews + lessons + settings }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val aiStatus = MutableStateFlow<Remote<AiStatusBody>>(Remote.Idle)

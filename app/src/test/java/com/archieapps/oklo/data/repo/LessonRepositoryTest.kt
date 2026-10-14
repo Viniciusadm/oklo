@@ -29,8 +29,6 @@ class FakeLessonDao : LessonDao {
 
     override suspend fun getByDeck(deckId: String): LessonEntity? = rows.value.values.firstOrNull { it.deckId == deckId }
 
-    override suspend fun get(id: String): LessonEntity? = rows.value[id]
-
     override suspend fun upsert(lesson: LessonEntity) {
         rows.value = rows.value + (lesson.id to lesson)
     }
