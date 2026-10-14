@@ -142,32 +142,34 @@ class AiReviewViewModel(
         saving.value = true
         val generateLesson = lessonOption.value.checked
         viewModelScope.launch {
-            runCatching {
-                if (!deckExists(current.deckId)) error("O deck de destino não existe mais. Escolha outro.")
-                createCards(current.deckId, chosen.map { it.content })
-            }.onSuccess { created ->
-                val path = DeckTree.find(roots.value, current.deckId)?.pathLabel ?: ""
-                draft.batch.value = null
-                draft.form.update { it.copy(text = "") }
-                val signedIn = isSignedIn()
-                val base = AddSummary(created, current.items.size - chosen.size, current.deckId, path, signedIn)
-                if (generateLesson) {
-                    val message = startLesson(current.deckId, current.sourceText)
-                    summary.value = base.copy(lessonStarted = message == null, lessonMessage = message)
-                } else {
-                    summary.value = base
-                    if (signedIn) requestSync()
+            try {
+                runCatching {
+                    if (!deckExists(current.deckId)) error("O deck de destino não existe mais. Escolha outro.")
+                    createCards(current.deckId, chosen.map { it.content })
+                }.onSuccess { created ->
+                    val path = DeckTree.find(roots.value, current.deckId)?.pathLabel ?: ""
+                    draft.batch.value = null
+                    draft.form.update { it.copy(text = "") }
+                    val signedIn = runCatching { isSignedIn() }.getOrDefault(false)
+                    val base = AddSummary(created, current.items.size - chosen.size, current.deckId, path, signedIn)
+                    val message = if (generateLesson) attemptLesson(current.deckId, current.sourceText) else null
+                    summary.value = base.copy(lessonStarted = generateLesson && message == null, lessonMessage = message)
+                    if (signedIn && (!generateLesson || message != null)) requestSync()
+                }.onFailure { problem ->
+                    error.value = problem.message ?: "Não foi possível adicionar os cards."
                 }
-            }.onFailure { problem ->
-                error.value = problem.message ?: "Não foi possível adicionar os cards."
+            } finally {
+                saving.value = false
             }
-            saving.value = false
         }
     }
 
+    private suspend fun attemptLesson(deckId: String, sourceText: String): String? =
+        runCatching { startLesson(deckId, sourceText) }.getOrElse { LESSON_START_FAILED }
+
     private suspend fun startLesson(deckId: String, sourceText: String): String? {
         if (!isOnline()) return LESSON_START_FAILED
-        when (val report = syncNow()) {
+        when (syncNow()) {
             is SyncReport.Done -> Unit
             null -> return LESSON_NEEDS_SIGN_IN
             is SyncReport.Failed -> return LESSON_START_FAILED
@@ -192,8 +194,9 @@ class AiReviewViewModel(
 
     private fun retryLesson(deckId: String, sourceText: String) {
         viewModelScope.launch {
-            val message = startLesson(deckId, sourceText)
+            val message = attemptLesson(deckId, sourceText)
             summary.update { it?.copy(lessonMessage = message, lessonStarted = message == null) }
+            if (message != null && summary.value?.synced == true) requestSync()
         }
     }
 

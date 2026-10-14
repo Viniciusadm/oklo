@@ -57,16 +57,17 @@ import com.archieapps.oklo.ui.components.DeckPickerDialog
 import com.archieapps.oklo.ui.components.DeckRow
 import com.archieapps.oklo.ui.components.EmptyState
 import com.archieapps.oklo.ui.components.Eyebrow
-import com.archieapps.oklo.ui.components.InlineProgress
-import com.archieapps.oklo.ui.components.Notice
-import com.archieapps.oklo.ui.components.NoticeTone
 import com.archieapps.oklo.ui.components.Hairline
 import com.archieapps.oklo.ui.components.IconAction
+import com.archieapps.oklo.ui.components.InlineProgress
 import com.archieapps.oklo.ui.components.ListRow
 import com.archieapps.oklo.ui.components.Loading
 import com.archieapps.oklo.ui.components.Metric
+import com.archieapps.oklo.ui.components.Notice
+import com.archieapps.oklo.ui.components.NoticeTone
 import com.archieapps.oklo.ui.components.OkloSheet
 import com.archieapps.oklo.ui.components.PrimaryButton
+import com.archieapps.oklo.ui.components.QuietButton
 import com.archieapps.oklo.ui.components.SecondaryButton
 import com.archieapps.oklo.ui.components.SectionCard
 import com.archieapps.oklo.ui.components.SegmentedTabs
@@ -153,9 +154,13 @@ fun DeckScreen(navigator: AppNavigator, deckId: String) {
                         parentPath = pathParent,
                         lessonTitle = lesson?.let { lessonTitle(it.source, node.deck.name) },
                         lessonProgress = lessonProgress,
+                        onDismissLessonFailure = viewModel::clearLessonFailure,
                         onLesson = { navigator.to(Routes.lesson(node.id)) },
                         onEditLesson = { navigator.to(Routes.editLesson(node.id)) },
-                        onLessonAi = { lessonAiOpen = true },
+                        onLessonAi = {
+                            viewModel.clearLessonFailure()
+                            lessonAiOpen = true
+                        },
                         onStudy = { viewModel.study(node.id, navigator::to) },
                         onAddCard = { navigator.to(Routes.newCard(node.id)) },
                         onAi = { navigator.to(Routes.aiCreate(node.id)) },
@@ -346,6 +351,7 @@ private fun Summary(
     parentPath: String?,
     lessonTitle: String?,
     lessonProgress: LessonProgress,
+    onDismissLessonFailure: () -> Unit,
     onLesson: () -> Unit,
     onEditLesson: () -> Unit,
     onLessonAi: () -> Unit,
@@ -381,19 +387,26 @@ private fun Summary(
         when (lessonProgress) {
             LessonProgress.Generating -> InlineProgress("Gerando aula…", Modifier.fillMaxWidth())
             else -> {
-                (lessonProgress as? LessonProgress.Failed)?.let { Notice(it.message, tone = NoticeTone.Error) }
-            SecondaryButton(
-                if (lessonTitle != null) "Editar aula" else "Escrever aula",
-                onClick = onEditLesson,
-                icon = R.drawable.ic_edit,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            SecondaryButton(
-                if (lessonProgress is LessonProgress.Failed) "Tentar de novo" else if (lessonTitle != null) "Substituir aula com IA" else "Gerar aula com IA",
-                onClick = onLessonAi,
-                icon = R.drawable.ic_sparkle,
-                modifier = Modifier.fillMaxWidth(),
-            )
+                (lessonProgress as? LessonProgress.Failed)?.let {
+                    Notice(it.message, tone = NoticeTone.Error)
+                    QuietButton("Dispensar", onClick = onDismissLessonFailure)
+                }
+                SecondaryButton(
+                    if (lessonTitle != null) "Editar aula" else "Escrever aula",
+                    onClick = onEditLesson,
+                    icon = R.drawable.ic_edit,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                SecondaryButton(
+                    when {
+                        lessonProgress is LessonProgress.Failed -> "Tentar de novo"
+                        lessonTitle != null -> "Substituir aula com IA"
+                        else -> "Gerar aula com IA"
+                    },
+                    onClick = onLessonAi,
+                    icon = R.drawable.ic_sparkle,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
         val canStudy = counts.pending + counts.newCount > 0

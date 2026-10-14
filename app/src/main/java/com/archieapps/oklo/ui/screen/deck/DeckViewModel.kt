@@ -32,6 +32,8 @@ sealed interface LessonProgress {
     data class Failed(val message: String) : LessonProgress
 }
 
+const val LESSON_FAILED = "A geração da aula falhou. Tente de novo."
+
 const val LESSON_DELAYED = "A aula está demorando mais que o normal. Tente de novo mais tarde."
 
 fun lessonProgress(tracker: LessonJobTracker, deckId: String): Flow<LessonProgress> =
@@ -39,7 +41,7 @@ fun lessonProgress(tracker: LessonJobTracker, deckId: String): Flow<LessonProgre
         when (state) {
             null, is LessonJobState.Done -> LessonProgress.Idle
             LessonJobState.Polling -> LessonProgress.Generating
-            is LessonJobState.Failed -> LessonProgress.Failed(state.error)
+            is LessonJobState.Failed -> LessonProgress.Failed(LESSON_FAILED)
             LessonJobState.Delayed -> LessonProgress.Failed(LESSON_DELAYED)
         }
     }
@@ -84,6 +86,8 @@ class DeckViewModel(private val container: Container, val deckId: String) : View
         val node = DeckTree.find(roots, deckId)
         if (node == null) DeckUi.Missing else DeckUi.Ready(node, roots, cards.distinctBy { it.id }, now)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun clearLessonFailure() = container.lessonAiFinisher.clear(deckId)
 
     fun study(deckId: String, navigate: (String) -> Unit) {
         if (studyJob?.isActive == true) return

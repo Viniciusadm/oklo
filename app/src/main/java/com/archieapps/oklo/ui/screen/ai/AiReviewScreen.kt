@@ -31,6 +31,7 @@ import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,6 +42,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.archieapps.oklo.LocalContainer
 import com.archieapps.oklo.R
 import com.archieapps.oklo.data.model.CardContent
 import com.archieapps.oklo.data.model.CardType
@@ -69,7 +71,6 @@ import com.archieapps.oklo.ui.components.SectionCard
 import com.archieapps.oklo.ui.components.SheetAction
 import com.archieapps.oklo.ui.components.TopBar
 import com.archieapps.oklo.ui.components.plural
-import com.archieapps.oklo.LocalContainer
 import com.archieapps.oklo.ui.nav.AppNavigator
 import com.archieapps.oklo.ui.nav.Routes
 import com.archieapps.oklo.ui.nav.appViewModel
@@ -88,7 +89,8 @@ fun AiReviewScreen(navigator: AppNavigator) {
     val lessonOption by viewModel.lessonOption.collectAsStateWithLifecycle()
     val container = LocalContainer.current
     val codePrompt = remember { CodePromptController(container.codeGate) }
-    viewModel.openCodePrompt = { retry -> codePrompt.open(retry) }
+    SideEffect { viewModel.openCodePrompt = { retry -> codePrompt.open(retry) } }
+    val codePromptOpen by codePrompt.state.collectAsStateWithLifecycle()
     CodePromptHost(codePrompt)
     var menuFor by remember { mutableStateOf<DraftItem?>(null) }
     var editing by remember { mutableStateOf<DraftItem?>(null) }
@@ -102,7 +104,7 @@ fun AiReviewScreen(navigator: AppNavigator) {
                 append("Os cards foram salvos em “${done.deckPath}” como novos e já podem ser estudados.")
                 if (done.skipped > 0) append(" ${plural(done.skipped, "card não selecionado foi descartado", "cards não selecionados foram descartados")}.")
                 if (done.lessonStarted) append(" A aula está sendo gerada; acompanhe no deck.")
-                done.lessonMessage?.let { append(" ").append(it) }
+                done.lessonMessage?.takeIf { codePromptOpen == null }?.let { append(" ").append(it) }
                 append(if (done.synced) " O backup está sendo sincronizado." else " Eles ficam só neste aparelho até você entrar na conta.")
             },
             icon = R.drawable.ic_check,

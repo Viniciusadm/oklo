@@ -47,8 +47,12 @@ class AiReviewViewModelTest {
     private var codePrompts = 0
     private var retryAfterCode: (() -> Unit)? = null
 
+    private var generatorThrows = false
+    private var syncThrows = false
+
     private val generator = object : LessonGenerator {
         override suspend fun lessonGenerate(request: LessonGenerateRequest): ApiResult<LessonJobStarted> {
+            if (generatorThrows) error("boom")
             events += "post"
             requests += request
             return start
@@ -79,6 +83,8 @@ class AiReviewViewModelTest {
         online = true
         codePrompts = 0
         retryAfterCode = null
+        generatorThrows = false
+        syncThrows = false
         syncReport = SyncReport.Done(pushed = 0, pulled = 0, applied = 0, rejected = 0, usn = 1)
         start = ApiResult.Success(LessonJobStarted("job-1"))
         draft.batch.value = DraftBatch(
@@ -110,6 +116,7 @@ class AiReviewViewModelTest {
             isSignedIn = { signedIn },
             requestSync = { events += "requestSync" },
             syncNow = {
+                if (syncThrows) error("boom")
                 events += "sync"
                 syncReport
             },
@@ -159,6 +166,17 @@ class AiReviewViewModelTest {
         runCurrent()
         vm.setGenerateLesson(false)
         assertFalse(vm.lessonOption.value.checked)
+        runCurrent()
+        assertFalse(vm.lessonOption.value.checked)
+        lessonOrigin = "manual"
+        vm.changeDeck("deck-2")
+        runCurrent()
+        assertFalse(vm.lessonOption.value.checked)
+        assertTrue(vm.lessonOption.value.replacesManualLesson)
+        lessonOrigin = "ai"
+        vm.changeDeck("deck-3")
+        runCurrent()
+        assertTrue(vm.lessonOption.value.checked)
     }
 
     @Test
@@ -227,5 +245,72 @@ class AiReviewViewModelTest {
         assertEquals(listOf("deck-1" to "job-2"), tracked)
         assertNull(vm.summary.value?.lessonMessage)
         assertTrue(vm.summary.value?.lessonStarted == true)
+    }
+
+    @Test
+    fun startFailureStillRequestsBackupSync() = runTest {
+        start = ApiResult.Failure.Network
+        val vm = viewModel()
+        runCurrent()
+        vm.addSelected()
+        runCurrent()
+        assertEquals(listOf("save", "sync", "post", "requestSync"), events)
+    }
+
+    @Test
+    fun syncFailureStillRequestsBackupSync() = runTest {
+        syncReport = SyncReport.Failed(ApiResult.Failure.Network, SyncReport.Stage.Push)
+        val vm = viewModel()
+        runCurrent()
+        vm.addSelected()
+        runCurrent()
+        assertEquals(listOf("save", "sync", "requestSync"), events)
+    }
+
+    @Test
+    fun offlineSkipsLessonButStillBacksUp() = runTest {
+        online = false
+        val vm = viewModel()
+        runCurrent()
+        vm.addSelected()
+        runCurrent()
+        assertEquals(listOf("save", "requestSync"), events)
+        assertEquals(AiReviewViewModel.LESSON_START_FAILED, vm.summary.value?.lessonMessage)
+    }
+
+    @Test
+    fun notSignedInShowsSignInMessageWithoutSync() = runTest {
+        signedIn = false
+        syncReport = null
+        val vm = viewModel()
+        runCurrent()
+        vm.addSelected()
+        runCurrent()
+        assertEquals(AiReviewViewModel.LESSON_NEEDS_SIGN_IN, vm.summary.value?.lessonMessage)
+        assertFalse(events.contains("requestSync"))
+    }
+
+    @Test
+    fun throwingGeneratorDoesNotLeaveSavingStuck() = runTest {
+        generatorThrows = true
+        val vm = viewModel()
+        runCurrent()
+        vm.addSelected()
+        runCurrent()
+        assertFalse(vm.saving.value)
+        assertEquals(AiReviewViewModel.LESSON_START_FAILED, vm.summary.value?.lessonMessage)
+        assertEquals(1, savedContents.size)
+        assertTrue(events.contains("requestSync"))
+    }
+
+    @Test
+    fun throwingSyncDoesNotLeaveSavingStuck() = runTest {
+        syncThrows = true
+        val vm = viewModel()
+        runCurrent()
+        vm.addSelected()
+        runCurrent()
+        assertFalse(vm.saving.value)
+        assertEquals(AiReviewViewModel.LESSON_START_FAILED, vm.summary.value?.lessonMessage)
     }
 }

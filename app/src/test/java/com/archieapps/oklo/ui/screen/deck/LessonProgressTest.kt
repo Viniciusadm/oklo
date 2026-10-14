@@ -41,9 +41,9 @@ class LessonProgressTest {
     }
 
     @Test
-    fun failureCarriesTheError() = runTest {
+    fun failureShowsPortugueseMessageEvenForRawErrors() = runTest {
         states.value = mapOf("deck-1" to LessonJobState.Failed("deu ruim"))
-        assertEquals(LessonProgress.Failed("deu ruim"), progress())
+        assertEquals(LessonProgress.Failed(LESSON_FAILED), progress())
     }
 
     @Test
