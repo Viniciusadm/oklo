@@ -5,8 +5,11 @@ import com.archieapps.oklo.data.db.LessonEntity
 import com.archieapps.oklo.data.db.toModel
 import com.archieapps.oklo.data.model.Lesson
 import com.archieapps.oklo.data.prefs.AppPreferences
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 
 class LessonRepository(
     private val dao: LessonDao,
@@ -14,6 +17,7 @@ class LessonRepository(
     private val validator: LessonValidator = LessonValidator.Ribalta,
     private val time: TimeSource = TimeSource.System,
     private val ids: () -> String = ::newId,
+    private val validationDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     fun observeByDeck(deckId: String): Flow<Lesson?> = dao.observeByDeck(deckId).map { it?.toModel() }
 
@@ -43,7 +47,7 @@ class LessonRepository(
         val lesson = get(deckId) ?: return false
         val seen = preferences.seenLessonVersionNow(deckId)
         if (seen != null && lesson.version <= seen) return false
-        return validator.isValid(lesson.source)
+        return withContext(validationDispatcher) { validator.isValid(lesson.source) }
     }
 
     companion object {

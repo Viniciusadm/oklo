@@ -5,6 +5,7 @@ import com.archieapps.oklo.data.db.LessonDao
 import com.archieapps.oklo.data.db.LessonEntity
 import com.archieapps.oklo.data.db.RowVersion
 import com.archieapps.oklo.data.prefs.AppPreferences
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -20,6 +21,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.util.concurrent.Executors
 
 class FakeLessonDao : LessonDao {
     val rows = MutableStateFlow<Map<String, LessonEntity>>(emptyMap())
@@ -146,6 +148,32 @@ class LessonRepositoryTest {
         dao.upsert(entity("l1", "d1", version = 1))
 
         assertTrue(repository.needsGate("d1"))
+    }
+
+    @Test
+    fun `gate validation runs on the injected background dispatcher`() = runTest(UnconfinedTestDispatcher()) {
+        val dispatcher = Executors.newSingleThreadExecutor { Thread(it, "gate-validation") }.asCoroutineDispatcher()
+        try {
+            val store = PreferenceDataStoreFactory.create(scope = backgroundScope) { folder.newFile("prefs-${System.nanoTime()}.preferences_pb") }
+            var validatedOn: String? = null
+            val repository = LessonRepository(
+                dao = dao,
+                preferences = AppPreferences(store),
+                validator = LessonValidator {
+                    validatedOn = Thread.currentThread().name
+                    true
+                },
+                time = { clock },
+                ids = { "lesson-${++nextId}" },
+                validationDispatcher = dispatcher,
+            )
+            dao.upsert(entity("l1", "d1", version = 1))
+
+            assertTrue(repository.needsGate("d1"))
+            assertEquals("gate-validation", validatedOn)
+        } finally {
+            dispatcher.close()
+        }
     }
 
     @Test
