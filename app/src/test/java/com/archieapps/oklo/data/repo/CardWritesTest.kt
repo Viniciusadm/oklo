@@ -75,4 +75,42 @@ class CardWritesTest {
         assertFalse(CardWrites.isSupportedTarget("anchor:custo\$alto"))
         assertFalse(CardWrites.isSupportedTarget("custo"))
     }
+
+    private fun card(id: String, target: String?, deletedAt: Long? = null) =
+        entity(target).copy(id = id, deletedAt = deletedAt)
+
+    @Test
+    fun `relink applies links as dirty edits with a later stamp`() {
+        val changed = CardWrites.relink(listOf(card("c1", null)), mapOf("c1" to "anchor:clara"), null, 50)
+        val edited = changed.single()
+        assertEquals("anchor:clara", edited.lessonTarget)
+        assertTrue(edited.dirty)
+        assertEquals(101, edited.updatedAt)
+    }
+
+    @Test
+    fun `relink clears targets missing from the new lesson unless re-linked`() {
+        val cards = listOf(
+            card("orphan", "anchor:velha"),
+            card("kept", "anchor:clara"),
+            card("relinked", "anchor:velha"),
+            card("free", null),
+        )
+        val changed = CardWrites.relink(cards, mapOf("relinked" to "page:intro"), setOf("anchor:clara", "page:intro"), 500)
+        assertEquals(mapOf("orphan" to null, "relinked" to "page:intro"), changed.associate { it.id to it.lessonTarget })
+        assertTrue(changed.all { it.dirty && it.updatedAt == 500L })
+    }
+
+    @Test
+    fun `relink without targets to keep never clears`() {
+        val changed = CardWrites.relink(listOf(card("orphan", "anchor:velha")), emptyMap(), null, 500)
+        assertTrue(changed.isEmpty())
+    }
+
+    @Test
+    fun `relink skips deleted cards, unchanged cards and unsupported targets`() {
+        val cards = listOf(card("gone", null, deletedAt = 9), card("same", "anchor:clara"), card("bad", null))
+        val links = mapOf("gone" to "anchor:clara", "same" to "anchor:clara", "bad" to "anchor:custo\$alto")
+        assertTrue(CardWrites.relink(cards, links, setOf("anchor:clara"), 500).isEmpty())
+    }
 }

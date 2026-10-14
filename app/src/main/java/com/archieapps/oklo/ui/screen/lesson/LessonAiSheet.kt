@@ -44,7 +44,8 @@ fun LessonAiSheet(
             generator = container.ai,
             model = { container.settings.current().aiModel.wire },
             isOnline = container.connectivity::isOnline,
-            requestSync = container.sync::requestSync,
+            syncNow = container.sync::syncIfSignedIn,
+            finish = { body -> container.lessonAiFinisher.finish(deckId, body) },
         )
     }
     val state by viewModel.state.collectAsStateWithLifecycle()

@@ -222,6 +222,14 @@ data class LessonJobBody(
     val error: String? = null,
     val lessonId: String? = null,
     val warnings: List<String> = emptyList(),
+    val links: List<LessonLinkDto> = emptyList(),
+    val clearTargets: Boolean = false,
+)
+
+@Serializable
+data class LessonLinkDto(
+    val cardId: String,
+    val target: String,
 )
 
 @Serializable

@@ -5,7 +5,9 @@ import com.archieapps.oklo.core.net.LessonGenerateRequest
 import com.archieapps.oklo.core.net.LessonJobBody
 import com.archieapps.oklo.core.net.LessonJobStarted
 import com.archieapps.oklo.core.net.OkloJson
+import com.archieapps.oklo.core.net.LessonLinkDto
 import com.archieapps.oklo.data.repo.LessonGenerator
+import com.archieapps.oklo.data.sync.SyncReport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -17,6 +19,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -24,13 +27,16 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LessonAiViewModelTest {
-    private class FakeGenerator : LessonGenerator {
+    private val events = mutableListOf<String>()
+
+    private inner class FakeGenerator : LessonGenerator {
         val requests = mutableListOf<LessonGenerateRequest>()
         var start: ApiResult<LessonJobStarted> = ApiResult.Success(LessonJobStarted("job-1"))
         val statuses = ArrayDeque<ApiResult<LessonJobBody>>()
         var polls = 0
 
         override suspend fun lessonGenerate(request: LessonGenerateRequest): ApiResult<LessonJobStarted> {
+            events += "post"
             requests += request
             return start
         }
@@ -42,6 +48,8 @@ class LessonAiViewModelTest {
     }
 
     private var syncs = 0
+    private val finished = mutableListOf<LessonJobBody>()
+    private var syncReport: SyncReport? = SyncReport.Done(pushed = 0, pulled = 0, applied = 0, rejected = 0, usn = 1)
     private var codePrompts = 0
     private var retryAfterCode: (() -> Unit)? = null
     private var online = true
@@ -49,6 +57,9 @@ class LessonAiViewModelTest {
     @Before
     fun setUp() {
         syncs = 0
+        finished.clear()
+        events.clear()
+        syncReport = SyncReport.Done(pushed = 0, pulled = 0, applied = 0, rejected = 0, usn = 1)
         codePrompts = 0
         retryAfterCode = null
         online = true
@@ -66,7 +77,14 @@ class LessonAiViewModelTest {
             generator = generator,
             model = { "pro" },
             isOnline = { online },
-            requestSync = { syncs++ },
+            syncNow = {
+                events += "sync"
+                syncReport
+            },
+            finish = {
+                syncs++
+                finished += it
+            },
             openCodePrompt = { retry ->
                 codePrompts++
                 retryAfterCode = retry
@@ -278,5 +296,80 @@ class LessonAiViewModelTest {
         vm.prepare(hasLesson = true)
         assertEquals(LessonAiPhase.Form, vm.state.value.phase)
         assertTrue(vm.state.value.hasLesson)
+    }
+
+    @Test
+    fun fullSyncFinishesBeforeTheRequestIsSent() = runTest {
+        val generator = FakeGenerator()
+        val vm = viewModel(generator)
+        vm.prepare(hasLesson = false)
+        vm.submit()
+        runCurrent()
+        assertEquals(listOf("sync", "post"), events.take(2))
+        vm.dispose()
+    }
+
+    @Test
+    fun failedSyncBeforeSendingShowsAClearMessageAndSkipsTheRequest() = runTest {
+        syncReport = SyncReport.Failed(ApiResult.Failure.Network, SyncReport.Stage.Push)
+        val generator = FakeGenerator()
+        val vm = viewModel(generator)
+        vm.prepare(hasLesson = false)
+        vm.submit()
+        runCurrent()
+        assertTrue(generator.requests.isEmpty())
+        assertEquals(LessonAiPhase.Form, vm.state.value.phase)
+        assertEquals(LessonAiViewModel.SYNC_FAILED, vm.state.value.error)
+    }
+
+    @Test
+    fun notSignedInSyncShowsAClearMessage() = runTest {
+        syncReport = null
+        val generator = FakeGenerator()
+        val vm = viewModel(generator)
+        vm.prepare(hasLesson = false)
+        vm.submit()
+        runCurrent()
+        assertTrue(generator.requests.isEmpty())
+        assertEquals(ApiResult.Failure.NotSignedIn.userMessage, vm.state.value.error)
+    }
+
+    @Test
+    fun deckMissingOnServerShowsAClearMessageInsteadOfTheRawValidation() = runTest {
+        val generator = FakeGenerator()
+        generator.start = ApiResult.Failure.Validation("The selected deck id is invalid.")
+        val vm = viewModel(generator)
+        vm.prepare(hasLesson = false)
+        vm.submit()
+        runCurrent()
+        assertEquals(LessonAiPhase.Form, vm.state.value.phase)
+        assertEquals(LessonAiViewModel.DECK_NOT_ON_SERVER, vm.state.value.error)
+        assertFalse(vm.state.value.error!!.contains("invalid"))
+    }
+
+    @Test
+    fun doneHandsLinksAndClearFlagToTheFinisher() = runTest {
+        val generator = FakeGenerator()
+        val body = LessonJobBody(
+            "done",
+            lessonId = "lesson-1",
+            links = listOf(LessonLinkDto("c1", "anchor:fase-clara")),
+            clearTargets = true,
+        )
+        generator.statuses += ApiResult.Success(body)
+        val vm = viewModel(generator)
+        vm.prepare(hasLesson = false)
+        vm.submit()
+        runCurrent()
+        assertEquals(listOf(body), finished)
+        assertEquals(LessonAiPhase.Done, vm.state.value.phase)
+    }
+
+    @Test
+    fun doneStatusDecodesLinksAndClearTargets() {
+        val raw = """{"status":"done","lessonId":"l1","warnings":[],"links":[{"cardId":"c1","target":"anchor:a"}],"clearTargets":true}"""
+        val body = OkloJson.instance.decodeFromString(LessonJobBody.serializer(), raw)
+        assertEquals(listOf(LessonLinkDto("c1", "anchor:a")), body.links)
+        assertTrue(body.clearTargets)
     }
 }

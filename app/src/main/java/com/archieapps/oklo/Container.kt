@@ -14,6 +14,7 @@ import com.archieapps.oklo.data.repo.AiRepository
 import com.archieapps.oklo.data.repo.AuthRepository
 import com.archieapps.oklo.data.repo.CardRepository
 import com.archieapps.oklo.data.repo.DeckRepository
+import com.archieapps.oklo.data.repo.LessonAiFinisher
 import com.archieapps.oklo.data.repo.LessonRepository
 import com.archieapps.oklo.data.repo.SettingsRepository
 import com.archieapps.oklo.data.repo.StudyRepository
@@ -21,6 +22,7 @@ import com.archieapps.oklo.data.sync.RetrofitSyncRemote
 import com.archieapps.oklo.data.sync.RoomSyncStore
 import com.archieapps.oklo.data.sync.SyncCoordinator
 import com.archieapps.oklo.data.sync.SyncEngine
+import com.archieapps.oklo.ui.screen.editor.LessonTargetSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -50,6 +52,14 @@ class Container(application: Application) {
         remote = RetrofitSyncRemote(network.api, network.gatedApi, network.errors, codeGate),
     )
     val sync = SyncCoordinator(syncEngine, sessionStore, preferences, appScope)
+    val lessonAiFinisher = LessonAiFinisher(
+        syncNow = sync::syncIfSignedIn,
+        lessons = database.lessons(),
+        cards = cards,
+        targetsOf = { source -> LessonTargetSource.Ribalta.options(source).map { it.target }.toSet() },
+        requestSync = sync::requestSync,
+        scope = appScope,
+    )
 
     init {
         appScope.launch {

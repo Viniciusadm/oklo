@@ -4,8 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.archieapps.oklo.core.net.ApiResult
 import com.archieapps.oklo.core.net.LessonGenerateRequest
+import com.archieapps.oklo.core.net.LessonJobBody
 import com.archieapps.oklo.data.repo.AiRepository
 import com.archieapps.oklo.data.repo.LessonGenerator
+import com.archieapps.oklo.data.sync.SyncReport
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,7 +33,8 @@ class LessonAiViewModel(
     private val generator: LessonGenerator,
     private val model: suspend () -> String,
     private val isOnline: () -> Boolean,
-    private val requestSync: () -> Unit,
+    private val syncNow: suspend () -> SyncReport?,
+    private val finish: (LessonJobBody) -> Unit,
     var openCodePrompt: (onProvided: () -> Unit) -> Unit = {},
     private val pollIntervalMillis: Long = POLL_INTERVAL_MILLIS,
 ) : ViewModel() {
@@ -101,6 +104,18 @@ class LessonAiViewModel(
         _state.update { it.copy(phase = LessonAiPhase.Sending, error = null, warnings = emptyList()) }
         job?.cancel()
         job = viewModelScope.launch {
+            when (val report = syncNow()) {
+                is SyncReport.Done -> Unit
+                null -> {
+                    _state.update { it.copy(phase = LessonAiPhase.Form, error = ApiResult.Failure.NotSignedIn.userMessage) }
+                    return@launch
+                }
+                is SyncReport.Failed -> {
+                    val message = if (report.failure == ApiResult.Failure.Network) SYNC_FAILED else "$SYNC_FAILED_PREFIX ${report.failure.userMessage}"
+                    _state.update { it.copy(phase = LessonAiPhase.Form, error = message) }
+                    return@launch
+                }
+            }
             val request = LessonGenerateRequest(
                 deckId = deckId,
                 text = _state.value.text.trim().ifEmpty { null },
@@ -111,6 +126,9 @@ class LessonAiViewModel(
                 ApiResult.Failure.CodeMissing -> {
                     _state.update { it.copy(phase = LessonAiPhase.Form) }
                     openCodePrompt { send() }
+                }
+                is ApiResult.Failure.Validation -> _state.update {
+                    it.copy(phase = LessonAiPhase.Form, error = DECK_NOT_ON_SERVER)
                 }
                 is ApiResult.Failure -> _state.update {
                     it.copy(phase = LessonAiPhase.Form, error = result.userMessage)
@@ -126,8 +144,8 @@ class LessonAiViewModel(
             when (val result = generator.lessonJob(jobId)) {
                 is ApiResult.Success -> when (result.data.status) {
                     STATUS_DONE -> {
+                        finish(result.data)
                         _state.update { it.copy(phase = LessonAiPhase.Done, warnings = result.data.warnings) }
-                        requestSync()
                         return
                     }
                     STATUS_FAILED -> {
@@ -152,6 +170,9 @@ class LessonAiViewModel(
         const val MAX_POLLS = 300
         private const val STATUS_DONE = "done"
         private const val STATUS_FAILED = "failed"
+        const val SYNC_FAILED = "Não foi possível sincronizar o deck com o servidor antes de gerar a aula. Verifique a conexão e tente de novo."
+        const val SYNC_FAILED_PREFIX = "Não foi possível sincronizar o deck antes de gerar a aula:"
+        const val DECK_NOT_ON_SERVER = "Este deck ainda não chegou ao servidor. Sincronize o app e tente de novo."
         private const val DEFAULT_FAILURE = "A geração da aula falhou. Tente de novo."
     }
 }

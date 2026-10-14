@@ -14,7 +14,7 @@ class CardValidationException(message: String) : IllegalArgumentException(messag
 class CardRepository(
     private val db: OkloDatabase,
     private val time: TimeSource = TimeSource.System,
-) {
+) : LessonLinkWriter {
     val stats: Flow<List<CardStat>> = db.cards().observeStats().map { list -> list.map { it.toModel() } }
 
     fun byDeck(deckId: String): Flow<List<Card>> = db.cards().observeByDeck(deckId).map { list -> list.map { it.toModel() } }
@@ -43,6 +43,13 @@ class CardRepository(
         raw.validationError()?.let { throw CardValidationException(it) }
         val current = db.cards().get(id) ?: return
         db.cards().upsert(CardWrites.edit(current, raw, lessonTarget, time.now()))
+    }
+
+    override suspend fun applyLessonLinks(deckId: String, links: Map<String, String>, keepTargets: Set<String>?) {
+        db.withTransaction {
+            val changed = CardWrites.relink(db.cards().aliveInDecks(listOf(deckId)), links, keepTargets, time.now())
+            if (changed.isNotEmpty()) db.cards().upsertAll(changed)
+        }
     }
 
     suspend fun setSuspended(id: String, suspended: Boolean) {

@@ -66,4 +66,20 @@ object CardWrites {
             dirty = true,
         )
     }
+
+    fun relink(cards: List<CardEntity>, links: Map<String, String>, keepTargets: Set<String>?, now: Long): List<CardEntity> =
+        cards.filter { it.deletedAt == null }.mapNotNull { card ->
+            val linked = links[card.id]?.let { runCatching { normalizedTarget(it) }.getOrNull() }
+            val current = card.lessonTarget
+            val target = when {
+                linked != null -> linked
+                keepTargets != null && current != null && current !in keepTargets -> null
+                else -> current
+            }
+            if (target == current) {
+                null
+            } else {
+                card.copy(lessonTarget = target, updatedAt = Stamp.next(card.updatedAt, now), dirty = true)
+            }
+        }
 }
