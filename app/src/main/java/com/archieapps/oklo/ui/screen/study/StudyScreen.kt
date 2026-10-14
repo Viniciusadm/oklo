@@ -71,6 +71,8 @@ import com.archieapps.oklo.ui.components.SecondaryButton
 import com.archieapps.oklo.ui.components.SheetAction
 import com.archieapps.oklo.ui.components.plural
 import com.archieapps.oklo.ui.nav.AppNavigator
+import com.archieapps.oklo.ui.nav.LessonRouteMode
+import com.archieapps.oklo.ui.nav.Routes
 import com.archieapps.oklo.ui.nav.appViewModel
 import com.archieapps.oklo.ui.theme.CardFrontStyle
 import com.archieapps.oklo.ui.theme.Radii
@@ -113,6 +115,11 @@ fun StudyScreen(navigator: AppNavigator, deckId: String?) {
             onTrueFalse = viewModel::respondTrueFalse,
             onChoice = viewModel::respondChoice,
             onRate = viewModel::rate,
+            onViewInLesson = {
+                state.card.lessonTarget?.let { target ->
+                    navigator.to(Routes.lesson(state.card.deckId, LessonRouteMode.Target, target))
+                }
+            },
         )
     }
 
@@ -151,6 +158,7 @@ private fun QuestionScreen(
     onTrueFalse: (Boolean) -> Unit,
     onChoice: (Int) -> Unit,
     onRate: (Rating) -> Unit,
+    onViewInLesson: () -> Unit,
 ) {
     val content = state.card.content
     val palette = okloPalette
@@ -204,6 +212,9 @@ private fun QuestionScreen(
                                 Eyebrow("Explicação")
                                 Text(explanation, style = MaterialTheme.typography.bodyMedium)
                             }
+                        }
+                        if (state.canViewInLesson) {
+                            SecondaryButton("Ver na aula", onClick = onViewInLesson, modifier = Modifier.fillMaxWidth())
                         }
                     }
                 }

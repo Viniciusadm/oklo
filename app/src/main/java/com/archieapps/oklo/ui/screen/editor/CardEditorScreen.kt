@@ -57,6 +57,7 @@ fun CardEditorScreen(navigator: AppNavigator, deckId: String?, cardId: String?) 
     val roots by viewModel.roots.collectAsStateWithLifecycle()
     var confirmLeave by remember { mutableStateOf(false) }
     var pickDeck by remember { mutableStateOf(false) }
+    var pickLesson by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.finished) {
         if (state.finished) navigator.back()
@@ -111,6 +112,37 @@ fun CardEditorScreen(navigator: AppNavigator, deckId: String?, cardId: String?) 
                     )
                 }
             }
+            if (state.link.hasLesson) {
+                SectionCard(Modifier.clickable(role = Role.Button) { pickLesson = true }) {
+                    Eyebrow("Trecho da aula")
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val status = state.link.status
+                        Text(
+                            when (status) {
+                                LinkStatus.None -> "Sem vínculo"
+                                is LinkStatus.Linked -> status.option.label
+                                is LinkStatus.Broken -> "Vínculo quebrado"
+                            },
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (status is LinkStatus.Linked) MaterialTheme.colorScheme.onSurface else okloPalette.muted,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Icon(
+                            painterResource(R.drawable.ic_chevron_down),
+                            contentDescription = "Escolher trecho da aula",
+                            tint = okloPalette.muted,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                    (state.link.status as? LinkStatus.Broken)?.let {
+                        Notice(
+                            "Esse trecho não existe mais na aula. Escolha outro ou remova o vínculo.",
+                            tone = NoticeTone.Warning,
+                            action = { SecondaryButton("Remover vínculo", onClick = { viewModel.chooseLessonTarget(null) }) },
+                        )
+                    }
+                }
+            }
             CardContentEditor(content = state.content, onChange = viewModel::change)
             state.error?.let { Notice(it, tone = NoticeTone.Error) }
         }
@@ -138,6 +170,15 @@ fun CardEditorScreen(navigator: AppNavigator, deckId: String?, cardId: String?) 
             onPick = viewModel::chooseDeck,
             onDismiss = { pickDeck = false },
             emptyMessage = "Crie um deck na biblioteca antes de adicionar cards.",
+        )
+    }
+
+    if (pickLesson) {
+        LessonTargetPicker(
+            options = state.link.options,
+            selected = state.lessonTarget,
+            onPick = viewModel::chooseLessonTarget,
+            onDismiss = { pickLesson = false },
         )
     }
 

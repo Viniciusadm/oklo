@@ -50,7 +50,10 @@ sealed interface StudyUi {
         val intervals: Map<Rating, Long>,
         val busy: Boolean,
         val choiceOrder: List<Int> = emptyList(),
-    ) : StudyUi
+        val lessonAvailable: Boolean = false,
+    ) : StudyUi {
+        val canViewInLesson: Boolean get() = revealed && lessonAvailable && !card.lessonTarget.isNullOrBlank()
+    }
 
     data class Done(
         val deckName: String?,
@@ -125,6 +128,7 @@ class StudyViewModel(private val container: Container, private val deckId: Strin
                 intervals = container.study.previewIntervals(engine, card, now),
                 busy = false,
                 choiceOrder = card.content.choices.orEmpty().indices.shuffled(),
+                lessonAvailable = !card.lessonTarget.isNullOrBlank() && container.lessons.get(card.deckId) != null,
             )
             return
         }
