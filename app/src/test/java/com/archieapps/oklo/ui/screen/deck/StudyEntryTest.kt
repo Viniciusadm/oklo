@@ -1,10 +1,9 @@
 package com.archieapps.oklo.ui.screen.deck
 
-import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.archieapps.oklo.data.prefs.AppPreferences
-import com.archieapps.oklo.data.repo.FakeLessonDao
 import com.archieapps.oklo.data.repo.LessonRepository
-import com.archieapps.oklo.data.repo.LessonValidator
+import com.archieapps.oklo.data.repo.LessonTestFixture
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -15,10 +14,9 @@ class StudyEntryTest {
     @get:Rule
     val folder = TemporaryFolder()
 
-    private fun setup(scope: kotlinx.coroutines.test.TestScope, valid: Boolean = true): Pair<LessonRepository, AppPreferences> {
-        val store = PreferenceDataStoreFactory.create(scope = scope.backgroundScope) { folder.newFile("prefs-${System.nanoTime()}.preferences_pb") }
-        val preferences = AppPreferences(store)
-        return LessonRepository(FakeLessonDao(), preferences, LessonValidator { valid }, { 1L }, { "l-1" }) to preferences
+    private fun setup(scope: TestScope, valid: Boolean = true): Pair<LessonRepository, AppPreferences> {
+        val fixture = LessonTestFixture(folder, scope, valid)
+        return fixture.lessons to fixture.preferences
     }
 
     @Test

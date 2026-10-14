@@ -10,6 +10,7 @@ import com.archieapps.oklo.domain.DeckNode
 import com.archieapps.oklo.domain.DeckTree
 import com.archieapps.oklo.ui.common.DeckOperations
 import com.archieapps.oklo.ui.common.minuteTicker
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -34,6 +35,7 @@ class DeckViewModel(private val container: Container, val deckId: String) : View
     val tab = MutableStateFlow<DeckTab?>(null)
     val reorder = MutableStateFlow<List<String>?>(null)
     val operations = DeckOperations(container, viewModelScope)
+    private var studyJob: Job? = null
     private val studyEntry = StudyEntry(container.lessons)
 
     val lesson: StateFlow<Lesson?> = container.lessons.observeByDeck(deckId)
@@ -53,7 +55,8 @@ class DeckViewModel(private val container: Container, val deckId: String) : View
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun study(deckId: String, navigate: (String) -> Unit) {
-        viewModelScope.launch { navigate(studyEntry.route(deckId)) }
+        if (studyJob?.isActive == true) return
+        studyJob = viewModelScope.launch { navigate(studyEntry.route(deckId)) }
     }
 
     fun selectTab(value: DeckTab) {

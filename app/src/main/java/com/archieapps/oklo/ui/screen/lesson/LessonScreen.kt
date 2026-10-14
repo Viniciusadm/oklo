@@ -12,6 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
@@ -71,10 +72,11 @@ private fun LessonContent(navigator: AppNavigator, viewModel: LessonViewModel, s
             val result = compiled
             when {
                 result == null -> Loading()
-                result.isFailure -> Column {
+                result.isFailure -> {
+                    LaunchedEffect(lesson.version) { viewModel.onRenderFailed() }
                     Warning("Não foi possível exibir esta aula.")
                 }
-                else -> LessonBody(viewModel, state, result.getOrThrow())
+                else -> key(result) { LessonBody(viewModel, state, result.getOrThrow()) }
             }
         }
         if (state.mode == LessonMode.Gate) {

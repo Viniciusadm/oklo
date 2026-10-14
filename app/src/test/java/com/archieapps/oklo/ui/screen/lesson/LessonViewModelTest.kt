@@ -1,9 +1,6 @@
 package com.archieapps.oklo.ui.screen.lesson
 
-import androidx.datastore.preferences.core.PreferenceDataStoreFactory
-import com.archieapps.oklo.data.prefs.AppPreferences
-import com.archieapps.oklo.data.repo.FakeLessonDao
-import com.archieapps.oklo.data.repo.LessonRepository
+import com.archieapps.oklo.data.repo.LessonTestFixture
 import com.archieapps.oklo.data.repo.LessonValidator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -27,11 +24,9 @@ class LessonViewModelTest {
     @get:Rule
     val folder = TemporaryFolder()
 
-    private val dao = FakeLessonDao()
-
     @Before
     fun setUp() {
-        Dispatchers.setMain(UnconfinedTestDispatcher())
+        Dispatchers.setMain(testDispatcher)
     }
 
     @After
@@ -39,16 +34,12 @@ class LessonViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private class Fixture(val lessons: LessonRepository, val preferences: AppPreferences)
+    private val testDispatcher = UnconfinedTestDispatcher()
 
-    private fun fixture(scope: TestScope, valid: Boolean = true): Fixture {
-        val store = PreferenceDataStoreFactory.create(scope = scope.backgroundScope) { folder.newFile("prefs-${System.nanoTime()}.preferences_pb") }
-        val preferences = AppPreferences(store)
-        return Fixture(LessonRepository(dao, preferences, LessonValidator { valid }, { 1L }, { "lesson-1" }), preferences)
-    }
+    private fun fixture(scope: TestScope, valid: Boolean = true) = LessonTestFixture(folder, scope, valid)
 
-    private fun viewModel(f: Fixture, mode: LessonMode, target: String? = null, valid: Boolean = true) =
-        LessonViewModel(f.lessons, f.preferences, "deck-1", mode, target, LessonValidator { valid })
+    private fun viewModel(f: LessonTestFixture, mode: LessonMode, target: String? = null, valid: Boolean = true) =
+        LessonViewModel(f.lessons, f.preferences, "deck-1", mode, target, LessonValidator { valid }, testDispatcher)
 
     @Test
     fun missingLessonYieldsMissing() = runTest {
@@ -130,5 +121,40 @@ class LessonViewModelTest {
         assertEquals(LessonMode.Read, LessonMode.of("read"))
         assertEquals(LessonMode.Read, LessonMode.of(null))
         assertEquals(LessonMode.Target, LessonMode.of("target"))
+    }
+
+    @Test
+    fun renderFailureEnablesGateEvenWhenValidatorPassed() = runTest {
+        val f = fixture(this)
+        f.lessons.saveManual("deck-1", "# A")
+        val vm = viewModel(f, LessonMode.Gate)
+        assertFalse((vm.ui.value as LessonUi.Ready).canComplete)
+        vm.onRenderFailed()
+        val ready = vm.ui.value as LessonUi.Ready
+        assertTrue(ready.invalid)
+        assertTrue(ready.canComplete)
+        assertTrue(vm.complete())
+        assertEquals(1, f.preferences.seenLessonVersionNow("deck-1"))
+    }
+
+    @Test
+    fun renderFailureDoesNotCarryOverToNewVersion() = runTest {
+        val f = fixture(this)
+        f.lessons.saveManual("deck-1", "# A")
+        val vm = viewModel(f, LessonMode.Gate)
+        vm.onRenderFailed()
+        f.lessons.saveManual("deck-1", "# B")
+        val ready = vm.ui.value as LessonUi.Ready
+        assertEquals(2, ready.lesson.version)
+        assertFalse(ready.invalid)
+    }
+
+    @Test
+    fun reflectsLessonUpdatesWhileOpen() = runTest {
+        val f = fixture(this)
+        f.lessons.saveManual("deck-1", "# A")
+        val vm = viewModel(f, LessonMode.Read)
+        f.lessons.saveManual("deck-1", "# B")
+        assertEquals("# B", (vm.ui.value as LessonUi.Ready).lesson.source)
     }
 }

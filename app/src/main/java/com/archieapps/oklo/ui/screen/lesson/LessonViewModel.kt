@@ -8,12 +8,15 @@ import com.archieapps.oklo.data.repo.LessonRepository
 import com.archieapps.oklo.data.repo.LessonValidator
 import com.archieapps.ribalta.lesson.LessonTarget
 import com.archieapps.ribalta.lesson.parse
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 
 enum class LessonMode {
     Gate,
@@ -53,28 +56,34 @@ class LessonViewModel(
     private val mode: LessonMode,
     rawTarget: String?,
     private val validator: LessonValidator = LessonValidator.Ribalta,
+    private val dispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
-    private val loaded = MutableStateFlow<LessonUi>(LessonUi.Loading)
     private val reachedEnd = MutableStateFlow(false)
+    private val renderFailedVersion = MutableStateFlow<Int?>(null)
     private val target = rawTarget?.takeIf { it.isNotEmpty() && LessonTarget.parse(it) != null }
 
-    val ui: StateFlow<LessonUi> = combine(loaded, reachedEnd) { state, end ->
-        if (state is LessonUi.Ready) state.copy(reachedEnd = end) else state
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, LessonUi.Loading)
-
-    init {
-        viewModelScope.launch {
-            val lesson = lessons.get(deckId)
-            loaded.value = if (lesson == null) {
-                LessonUi.Missing
-            } else {
-                LessonUi.Ready(lesson, mode, !validator.isValid(lesson.source), target, reachedEnd = false)
-            }
+    private val loaded: StateFlow<LessonUi> = lessons.observeByDeck(deckId)
+        .map { lesson ->
+            if (lesson == null) LessonUi.Missing else LessonUi.Ready(lesson, mode, !validator.isValid(lesson.source), target, reachedEnd = false)
         }
-    }
+        .flowOn(dispatcher)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, LessonUi.Loading)
+
+    val ui: StateFlow<LessonUi> = combine(loaded, reachedEnd, renderFailedVersion) { state, end, failedVersion ->
+        if (state is LessonUi.Ready) {
+            state.copy(invalid = state.invalid || failedVersion == state.lesson.version, reachedEnd = end)
+        } else {
+            state
+        }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, LessonUi.Loading)
 
     fun onReachedEnd(value: Boolean) {
         reachedEnd.value = value
+    }
+
+    fun onRenderFailed() {
+        val state = loaded.value as? LessonUi.Ready ?: return
+        renderFailedVersion.value = state.lesson.version
     }
 
     suspend fun complete(): Boolean {
