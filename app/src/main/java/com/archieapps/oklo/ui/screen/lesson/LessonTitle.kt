@@ -1,6 +1,6 @@
 package com.archieapps.oklo.ui.screen.lesson
 
-private val headingLine = Regex("""^#{1,6}\s+(.+?)(?:\s*\{#[^}]*})?\s*$""")
+private val headingLine = Regex("""^#{1,6}\s+(.+?)(?:\s*\{#[^\}]*\})?\s*$""")
 
 fun lessonTitle(source: String, fallback: String): String =
     source.lineSequence()
