@@ -52,4 +52,10 @@ class LessonLinksTest {
         assertEquals(listOf(options[1], options[2]), LessonLinks.filter(options, "fotossintese"))
         assertEquals(options, LessonLinks.filter(options, "  "))
     }
+
+    @Test
+    fun `targets outside the id grammar are not offered`() {
+        val raw = options + LinkOption("anchor:custo\$alto", "Custo", "Fotossíntese")
+        assertEquals(options, LessonTargetSource.supportedOnly(raw))
+    }
 }

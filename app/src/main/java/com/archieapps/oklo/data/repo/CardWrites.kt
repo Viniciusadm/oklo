@@ -8,10 +8,17 @@ import com.archieapps.oklo.data.model.CardState
 object CardWrites {
     const val MAX_TARGET_BYTES = 120
 
+    private val TARGET_GRAMMAR = Regex("^(page|anchor):[A-Za-z0-9_-]+$")
+
+    fun isSupportedTarget(target: String): Boolean = TARGET_GRAMMAR.matches(target)
+
     fun normalizedTarget(raw: String?): String? {
         val target = raw?.trim()?.takeIf { it.isNotEmpty() } ?: return null
         if (target.toByteArray(Charsets.UTF_8).size > MAX_TARGET_BYTES) {
             throw CardValidationException("O vínculo com a aula é longo demais.")
+        }
+        if (!isSupportedTarget(target)) {
+            throw CardValidationException("O vínculo com a aula é inválido. Use um alvo com letras, números, _ ou -.")
         }
         return target
     }

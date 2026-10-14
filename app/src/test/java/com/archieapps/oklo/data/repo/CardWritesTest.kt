@@ -4,6 +4,7 @@ import com.archieapps.oklo.data.db.CardEntity
 import com.archieapps.oklo.data.model.CardContent
 import com.archieapps.oklo.data.model.CardType
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -57,5 +58,21 @@ class CardWritesTest {
         assertEquals("page:intro", created.lessonTarget)
         assertTrue(created.dirty)
         assertEquals(3, created.position)
+    }
+
+    @Test
+    fun `a target outside the id grammar is rejected`() {
+        listOf("anchor:custo\$alto", "anchor:", "pagina:intro", "anchor:com espaço", "anchor:ação").forEach { raw ->
+            val failure = runCatching { CardWrites.edit(entity(null), content, raw, 500) }.exceptionOrNull()
+            assertTrue(raw, failure is CardValidationException)
+        }
+    }
+
+    @Test
+    fun `supported targets follow the shared grammar`() {
+        assertTrue(CardWrites.isSupportedTarget("anchor:fase-clara_2"))
+        assertTrue(CardWrites.isSupportedTarget("page:Intro"))
+        assertFalse(CardWrites.isSupportedTarget("anchor:custo\$alto"))
+        assertFalse(CardWrites.isSupportedTarget("custo"))
     }
 }

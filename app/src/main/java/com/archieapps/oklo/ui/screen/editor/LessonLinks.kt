@@ -1,5 +1,6 @@
 package com.archieapps.oklo.ui.screen.editor
 
+import com.archieapps.oklo.data.repo.CardWrites
 import com.archieapps.ribalta.lesson.compileLesson
 import com.archieapps.ribalta.lesson.serialize
 import com.archieapps.ribalta.lesson.targets
@@ -13,9 +14,11 @@ fun interface LessonTargetSource {
     companion object {
         private const val WIDTH_PX = 1080
 
+        fun supportedOnly(options: List<LinkOption>): List<LinkOption> = options.filter { CardWrites.isSupportedTarget(it.target) }
+
         val Ribalta = LessonTargetSource { source ->
             runCatching {
-                compileLesson(source, WIDTH_PX).document.targets().map { LinkOption(it.target.serialize(), it.label, it.pageTitle) }
+                supportedOnly(compileLesson(source, WIDTH_PX).document.targets().map { LinkOption(it.target.serialize(), it.label, it.pageTitle) })
             }.getOrDefault(emptyList())
         }
     }
