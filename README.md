@@ -9,6 +9,7 @@ Other clients of the same backend: [`calendar`](https://github.com/Viniciusadm/c
 - JDK 11+
 - Android SDK with `compileSdk` 37; the app runs on Android 8.0+ (`minSdk` 26)
 - Android Gradle Plugin 9.3.3 and Kotlin 2.2.10 (from [`gradle/libs.versions.toml`](gradle/libs.versions.toml))
+- The sibling [`ribalta`](https://github.com/Viniciusadm/ribalta) repository checked out at `../../ribalta`, plus a Rust toolchain (`cargo`) with the `aarch64-linux-android` and `x86_64-linux-android` targets and the Android NDK, used to build its native lesson compiler
 
 ## Building
 
@@ -16,6 +17,12 @@ The backend address is read at build time from `BASE_URL` in `env.properties`, w
 
 ```bash
 cp env.properties.example env.properties
+```
+
+Lessons are rendered by the Ribalta Android library, pulled in as a composite build from `../../ribalta/android` (see [`settings.gradle.kts`](settings.gradle.kts)). Gradle compiles its native library with the NDK found through `ANDROID_NDK_HOME` or the SDK, but the fonts it bundles are not versioned, so fetch them once before the first build:
+
+```bash
+../../ribalta/android/scripts/fetch-fonts.sh
 ```
 
 Build and install the debug app:
