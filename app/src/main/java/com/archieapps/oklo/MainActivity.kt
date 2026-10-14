@@ -18,6 +18,7 @@ class MainActivity : ComponentActivity() {
         val container = (application as OkloApp).container
         if (savedInstanceState == null) {
             container.sync.requestSync()
+            container.lessonAiFinisher.resumePending()
         }
         setContent {
             val appearance by container.preferences.appearance.collectAsStateWithLifecycle(initialValue = null as Appearance?)

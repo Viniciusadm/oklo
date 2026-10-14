@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -39,7 +40,17 @@ data class SyncMeta(
     val lastError: String? = null,
 )
 
-class AppPreferences(private val store: DataStore<Preferences>) {
+data class PendingLessonJob(val deckId: String, val jobId: String)
+
+interface PendingLessonJobs {
+    suspend fun pendingLessonJobs(): List<PendingLessonJob>
+
+    suspend fun addPendingLessonJob(job: PendingLessonJob)
+
+    suspend fun removePendingLessonJob(jobId: String)
+}
+
+class AppPreferences(private val store: DataStore<Preferences>) : PendingLessonJobs {
     constructor(context: Context) : this(context.appDataStore)
 
     val appearance: Flow<Appearance> = store.data.map {
@@ -110,6 +121,22 @@ class AppPreferences(private val store: DataStore<Preferences>) {
         store.edit { it[seenLessonKey(deckId)] = version }
     }
 
+    override suspend fun pendingLessonJobs(): List<PendingLessonJob> =
+        store.data.first()[PENDING_LESSON_JOBS].orEmpty().mapNotNull { decodePending(it) }.sortedBy { it.deckId }
+
+    override suspend fun addPendingLessonJob(job: PendingLessonJob) {
+        store.edit { prefs ->
+            val others = prefs[PENDING_LESSON_JOBS].orEmpty().filter { decodePending(it)?.deckId != job.deckId }
+            prefs[PENDING_LESSON_JOBS] = others.toSet() + "${job.deckId}$PENDING_SEPARATOR${job.jobId}"
+        }
+    }
+
+    override suspend fun removePendingLessonJob(jobId: String) {
+        store.edit { prefs ->
+            prefs[PENDING_LESSON_JOBS] = prefs[PENDING_LESSON_JOBS].orEmpty().filter { decodePending(it)?.jobId != jobId }.toSet()
+        }
+    }
+
     suspend fun resetSyncState() {
         store.edit {
             it.remove(LAST_USN)
@@ -129,6 +156,14 @@ class AppPreferences(private val store: DataStore<Preferences>) {
         private val REJECTED_COUNT = intPreferencesKey("rejected_count")
         private val LAST_REJECTED_REASON = stringPreferencesKey("last_rejected_reason")
         private val LAST_ERROR = stringPreferencesKey("last_sync_error")
+
+        private val PENDING_LESSON_JOBS = stringSetPreferencesKey("pending_lesson_jobs")
+        private const val PENDING_SEPARATOR = "|"
+
+        private fun decodePending(raw: String): PendingLessonJob? {
+            val parts = raw.split(PENDING_SEPARATOR)
+            return if (parts.size == 2) PendingLessonJob(parts[0], parts[1]) else null
+        }
 
         private fun seenLessonKey(deckId: String) = intPreferencesKey("seen_lesson_$deckId")
     }

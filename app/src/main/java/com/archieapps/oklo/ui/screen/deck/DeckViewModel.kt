@@ -38,6 +38,10 @@ class DeckViewModel(private val container: Container, val deckId: String) : View
     private var studyJob: Job? = null
     private val studyEntry = StudyEntry(container.lessons)
 
+    init {
+        container.lessonAiFinisher.resumePending()
+    }
+
     val lesson: StateFlow<Lesson?> = container.lessons.observeByDeck(deckId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 

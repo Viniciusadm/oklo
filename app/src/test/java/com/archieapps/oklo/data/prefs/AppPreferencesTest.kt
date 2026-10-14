@@ -45,4 +45,19 @@ class AppPreferencesTest {
 
         assertEquals(2, preferences.seenLessonVersionNow("d1"))
     }
+
+    @Test
+    fun `pending lesson jobs are stored per deck and removed by job id`() = runTest(UnconfinedTestDispatcher()) {
+        val preferences = preferences(this)
+        assertEquals(emptyList<PendingLessonJob>(), preferences.pendingLessonJobs())
+
+        preferences.addPendingLessonJob(PendingLessonJob("d1", "job-1"))
+        preferences.addPendingLessonJob(PendingLessonJob("d2", "job-2"))
+        preferences.addPendingLessonJob(PendingLessonJob("d1", "job-3"))
+
+        assertEquals(setOf(PendingLessonJob("d1", "job-3"), PendingLessonJob("d2", "job-2")), preferences.pendingLessonJobs().toSet())
+
+        preferences.removePendingLessonJob("job-2")
+        assertEquals(listOf(PendingLessonJob("d1", "job-3")), preferences.pendingLessonJobs())
+    }
 }

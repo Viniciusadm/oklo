@@ -221,6 +221,7 @@ data class LessonJobBody(
     val status: String,
     val error: String? = null,
     val lessonId: String? = null,
+    val lessonVersion: Int? = null,
     val warnings: List<String> = emptyList(),
     val links: List<LessonLinkDto> = emptyList(),
     val clearTargets: Boolean = false,

@@ -53,6 +53,8 @@ class Container(application: Application) {
     )
     val sync = SyncCoordinator(syncEngine, sessionStore, preferences, appScope)
     val lessonAiFinisher = LessonAiFinisher(
+        generator = ai,
+        pending = preferences,
         syncNow = sync::syncIfSignedIn,
         lessons = database.lessons(),
         cards = cards,

@@ -4,12 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.archieapps.oklo.core.net.ApiResult
 import com.archieapps.oklo.core.net.LessonGenerateRequest
-import com.archieapps.oklo.core.net.LessonJobBody
 import com.archieapps.oklo.data.repo.AiRepository
 import com.archieapps.oklo.data.repo.LessonGenerator
+import com.archieapps.oklo.data.repo.LessonJobState
+import com.archieapps.oklo.data.repo.LessonJobTracker
 import com.archieapps.oklo.data.sync.SyncReport
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -31,20 +31,26 @@ data class LessonAiState(
 class LessonAiViewModel(
     private val deckId: String,
     private val generator: LessonGenerator,
+    private val tracker: LessonJobTracker,
     private val model: suspend () -> String,
     private val isOnline: () -> Boolean,
     private val syncNow: suspend () -> SyncReport?,
-    private val finish: (LessonJobBody) -> Unit,
     var openCodePrompt: (onProvided: () -> Unit) -> Unit = {},
-    private val pollIntervalMillis: Long = POLL_INTERVAL_MILLIS,
 ) : ViewModel() {
     private val _state = MutableStateFlow(LessonAiState())
     val state: StateFlow<LessonAiState> = _state
 
     private var job: Job? = null
 
+    init {
+        viewModelScope.launch {
+            tracker.jobState(deckId).collect { mirror(it) }
+        }
+    }
+
     fun prepare(hasLesson: Boolean) {
         if (_state.value.busy) return
+        if (_state.value.phase in FINISHED) tracker.clear(deckId)
         val keepText = _state.value.phase == LessonAiPhase.Form
         _state.value = LessonAiState(hasLesson = hasLesson, text = if (keepText) _state.value.text else "")
     }
@@ -122,7 +128,7 @@ class LessonAiViewModel(
                 model = model(),
             )
             when (val result = generator.lessonGenerate(request)) {
-                is ApiResult.Success -> poll(result.data.jobId)
+                is ApiResult.Success -> tracker.track(deckId, result.data.jobId)
                 ApiResult.Failure.CodeMissing -> {
                     _state.update { it.copy(phase = LessonAiPhase.Form) }
                     openCodePrompt { send() }
@@ -137,35 +143,18 @@ class LessonAiViewModel(
         }
     }
 
-    private suspend fun poll(jobId: String) {
-        _state.update { it.copy(phase = LessonAiPhase.Polling) }
-        repeat(MAX_POLLS) { attempt ->
-            if (attempt > 0) delay(pollIntervalMillis)
-            when (val result = generator.lessonJob(jobId)) {
-                is ApiResult.Success -> when (result.data.status) {
-                    STATUS_DONE -> {
-                        finish(result.data)
-                        _state.update { it.copy(phase = LessonAiPhase.Done, warnings = result.data.warnings) }
-                        return
-                    }
-                    STATUS_FAILED -> {
-                        _state.update {
-                            it.copy(phase = LessonAiPhase.Failed, error = result.data.error ?: DEFAULT_FAILURE)
-                        }
-                        return
-                    }
-                }
-                ApiResult.Failure.Network, is ApiResult.Failure.RateLimited -> Unit
-                is ApiResult.Failure -> {
-                    _state.update { it.copy(phase = LessonAiPhase.Failed, error = result.userMessage) }
-                    return
-                }
-            }
+    private fun mirror(job: LessonJobState?) {
+        when (job) {
+            null -> Unit
+            LessonJobState.Polling -> _state.update { it.copy(phase = LessonAiPhase.Polling, error = null) }
+            is LessonJobState.Done -> _state.update { it.copy(phase = LessonAiPhase.Done, warnings = job.warnings, error = null) }
+            is LessonJobState.Failed -> _state.update { it.copy(phase = LessonAiPhase.Failed, error = job.error) }
+            LessonJobState.Delayed -> _state.update { it.copy(phase = LessonAiPhase.Delayed) }
         }
-        _state.update { it.copy(phase = LessonAiPhase.Delayed) }
     }
 
     companion object {
+        private val FINISHED = setOf(LessonAiPhase.Done, LessonAiPhase.Failed, LessonAiPhase.Delayed)
         const val POLL_INTERVAL_MILLIS = 3_000L
         const val MAX_POLLS = 300
         private const val STATUS_DONE = "done"
