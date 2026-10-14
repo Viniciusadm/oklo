@@ -165,6 +165,7 @@ class AiCreateViewModel(private val container: Container, initialDeckId: String?
                         discarded = result.data.misc.discarded,
                         warnings = result.data.misc.warnings,
                         model = result.data.misc.model,
+                        sourceText = text,
                     )
                     _navigateToReview.tryEmit(Unit)
                 }

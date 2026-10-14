@@ -31,6 +31,7 @@ data class DraftBatch(
     val discarded: Int,
     val warnings: List<String>,
     val model: String?,
+    val sourceText: String = "",
 )
 
 class AiDraftStore {

@@ -52,6 +52,8 @@ import com.archieapps.oklo.ui.components.ActionSheet
 import com.archieapps.oklo.ui.components.CardContentEditor
 import com.archieapps.oklo.ui.components.CenteredEmptyState
 import com.archieapps.oklo.ui.components.CheckMark
+import com.archieapps.oklo.ui.components.CodePromptController
+import com.archieapps.oklo.ui.components.CodePromptHost
 import com.archieapps.oklo.ui.components.ConfirmDialog
 import com.archieapps.oklo.ui.components.DeckPickerDialog
 import com.archieapps.oklo.ui.components.EmptyState
@@ -67,6 +69,7 @@ import com.archieapps.oklo.ui.components.SectionCard
 import com.archieapps.oklo.ui.components.SheetAction
 import com.archieapps.oklo.ui.components.TopBar
 import com.archieapps.oklo.ui.components.plural
+import com.archieapps.oklo.LocalContainer
 import com.archieapps.oklo.ui.nav.AppNavigator
 import com.archieapps.oklo.ui.nav.Routes
 import com.archieapps.oklo.ui.nav.appViewModel
@@ -82,6 +85,11 @@ fun AiReviewScreen(navigator: AppNavigator) {
     val error by viewModel.error.collectAsStateWithLifecycle()
     val saving by viewModel.saving.collectAsStateWithLifecycle()
     val roots by viewModel.roots.collectAsStateWithLifecycle()
+    val lessonOption by viewModel.lessonOption.collectAsStateWithLifecycle()
+    val container = LocalContainer.current
+    val codePrompt = remember { CodePromptController(container.codeGate) }
+    viewModel.openCodePrompt = { retry -> codePrompt.open(retry) }
+    CodePromptHost(codePrompt)
     var menuFor by remember { mutableStateOf<DraftItem?>(null) }
     var editing by remember { mutableStateOf<DraftItem?>(null) }
     var pickDeck by remember { mutableStateOf(false) }
@@ -93,6 +101,8 @@ fun AiReviewScreen(navigator: AppNavigator) {
             message = buildString {
                 append("Os cards foram salvos em “${done.deckPath}” como novos e já podem ser estudados.")
                 if (done.skipped > 0) append(" ${plural(done.skipped, "card não selecionado foi descartado", "cards não selecionados foram descartados")}.")
+                if (done.lessonStarted) append(" A aula está sendo gerada; acompanhe no deck.")
+                done.lessonMessage?.let { append(" ").append(it) }
                 append(if (done.synced) " O backup está sendo sincronizado." else " Eles ficam só neste aparelho até você entrar na conta.")
             },
             icon = R.drawable.ic_check,
@@ -198,6 +208,22 @@ fun AiReviewScreen(navigator: AppNavigator) {
             verticalArrangement = Arrangement.spacedBy(Spacing.sm),
         ) {
             error?.let { Notice(it, tone = NoticeTone.Error) }
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 44.dp)
+                    .toggleable(value = lessonOption.checked, role = Role.Checkbox, onValueChange = viewModel::setGenerateLesson),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CheckMark(checked = lessonOption.checked)
+                Spacer(Modifier.width(Spacing.sm))
+                Column(Modifier.weight(1f)) {
+                    Text("Gerar aula junto", style = MaterialTheme.typography.labelLarge)
+                    if (lessonOption.replacesManualLesson) {
+                        Text("Substitui a aula atual", style = MaterialTheme.typography.bodySmall, color = okloPalette.muted)
+                    }
+                }
+            }
             PrimaryButton(
                 if (selected == 0) "Selecione cards para adicionar" else "Adicionar ${plural(selected, "card", "cards")} ao deck",
                 onClick = viewModel::addSelected,
