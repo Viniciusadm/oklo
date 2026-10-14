@@ -205,6 +205,26 @@ data class DraftMisc(
 )
 
 @Serializable
+data class LessonGenerateRequest(
+    val deckId: String,
+    val text: String? = null,
+    val model: String = "flash",
+)
+
+@Serializable
+data class LessonJobStarted(
+    val jobId: String,
+)
+
+@Serializable
+data class LessonJobBody(
+    val status: String,
+    val error: String? = null,
+    val lessonId: String? = null,
+    val warnings: List<String> = emptyList(),
+)
+
+@Serializable
 data class LoginRequest(
     val email: String,
     val password: String,

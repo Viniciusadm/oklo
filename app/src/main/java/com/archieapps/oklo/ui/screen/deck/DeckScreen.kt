@@ -74,6 +74,7 @@ import com.archieapps.oklo.ui.components.plural
 import com.archieapps.oklo.ui.nav.AppNavigator
 import com.archieapps.oklo.ui.nav.Routes
 import com.archieapps.oklo.ui.nav.appViewModel
+import com.archieapps.oklo.ui.screen.lesson.LessonAiSheet
 import com.archieapps.oklo.ui.screen.lesson.lessonTitle
 import com.archieapps.oklo.ui.screen.library.deckSubtitle
 import com.archieapps.oklo.ui.screen.settings.SettingsSection
@@ -93,6 +94,7 @@ fun DeckScreen(navigator: AppNavigator, deckId: String) {
     val scope = rememberCoroutineScope()
     var dialog by remember { mutableStateOf<DeckDialog?>(null) }
     var headerMenu by remember { mutableStateOf(false) }
+    var lessonAiOpen by remember { mutableStateOf(false) }
     var cardMenu by remember { mutableStateOf<Card?>(null) }
     var preview by remember { mutableStateOf<Card?>(null) }
     var confirmDeleteCard by remember { mutableStateOf<Card?>(null) }
@@ -148,6 +150,7 @@ fun DeckScreen(navigator: AppNavigator, deckId: String) {
                         lessonTitle = lesson?.let { lessonTitle(it.source, node.deck.name) },
                         onLesson = { navigator.to(Routes.lesson(node.id)) },
                         onEditLesson = { navigator.to(Routes.editLesson(node.id)) },
+                        onLessonAi = { lessonAiOpen = true },
                         onStudy = { viewModel.study(node.id, navigator::to) },
                         onAddCard = { navigator.to(Routes.newCard(node.id)) },
                         onAi = { navigator.to(Routes.aiCreate(node.id)) },
@@ -320,6 +323,15 @@ fun DeckScreen(navigator: AppNavigator, deckId: String) {
         )
     }
 
+    if (lessonAiOpen) {
+        LessonAiSheet(
+            deckId = node.id,
+            hasLesson = lesson != null,
+            onDismiss = { lessonAiOpen = false },
+            onOpenLesson = { navigator.to(Routes.lesson(node.id)) },
+        )
+    }
+
     DeckDialogs(dialog, state.roots, viewModel.operations, onDismiss = { dialog = null }, afterDelete = navigator::back)
 }
 
@@ -330,6 +342,7 @@ private fun Summary(
     lessonTitle: String?,
     onLesson: () -> Unit,
     onEditLesson: () -> Unit,
+    onLessonAi: () -> Unit,
     onStudy: () -> Unit,
     onAddCard: () -> Unit,
     onAi: () -> Unit,
@@ -363,6 +376,12 @@ private fun Summary(
             if (lessonTitle != null) "Editar aula" else "Escrever aula",
             onClick = onEditLesson,
             icon = R.drawable.ic_edit,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        SecondaryButton(
+            if (lessonTitle != null) "Substituir aula com IA" else "Gerar aula com IA",
+            onClick = onLessonAi,
+            icon = R.drawable.ic_sparkle,
             modifier = Modifier.fillMaxWidth(),
         )
         val canStudy = counts.pending + counts.newCount > 0
