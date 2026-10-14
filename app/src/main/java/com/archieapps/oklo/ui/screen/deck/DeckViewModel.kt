@@ -41,7 +41,7 @@ fun lessonProgress(tracker: LessonJobTracker, deckId: String): Flow<LessonProgre
         when (state) {
             null, is LessonJobState.Done -> LessonProgress.Idle
             LessonJobState.Polling -> LessonProgress.Generating
-            is LessonJobState.Failed -> LessonProgress.Failed(LESSON_FAILED)
+            is LessonJobState.Failed -> LessonProgress.Failed(state.error.ifBlank { LESSON_FAILED })
             LessonJobState.Delayed -> LessonProgress.Failed(LESSON_DELAYED)
         }
     }

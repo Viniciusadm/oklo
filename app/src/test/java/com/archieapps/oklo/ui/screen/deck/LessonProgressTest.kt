@@ -41,8 +41,14 @@ class LessonProgressTest {
     }
 
     @Test
-    fun failureShowsPortugueseMessageEvenForRawErrors() = runTest {
-        states.value = mapOf("deck-1" to LessonJobState.Failed("deu ruim"))
+    fun failureShowsTheServerReason() = runTest {
+        states.value = mapOf("deck-1" to LessonJobState.Failed("A IA recusou o pedido: conteúdo"))
+        assertEquals(LessonProgress.Failed("A IA recusou o pedido: conteúdo"), progress())
+    }
+
+    @Test
+    fun blankFailureFallsBackToDefaultMessage() = runTest {
+        states.value = mapOf("deck-1" to LessonJobState.Failed("   "))
         assertEquals(LessonProgress.Failed(LESSON_FAILED), progress())
     }
 
