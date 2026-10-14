@@ -38,6 +38,8 @@ sealed interface LessonUi {
 
     data object Missing : LessonUi
 
+    data object Syncing : LessonUi
+
     data class Ready(
         val lesson: Lesson,
         val mode: LessonMode,
@@ -57,6 +59,7 @@ class LessonViewModel(
     rawTarget: String?,
     private val validator: LessonValidator = LessonValidator.Ribalta,
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val awaitingSync: Boolean = false,
 ) : ViewModel() {
     private val reachedEnd = MutableStateFlow(false)
     private val renderFailedVersion = MutableStateFlow<Int?>(null)
@@ -64,7 +67,9 @@ class LessonViewModel(
 
     private val loaded: StateFlow<LessonUi> = lessons.observeByDeck(deckId)
         .map { lesson ->
-            if (lesson == null) LessonUi.Missing else LessonUi.Ready(lesson, mode, !validator.isValid(lesson.source), target, reachedEnd = false)
+            if (lesson == null) {
+                if (awaitingSync) LessonUi.Syncing else LessonUi.Missing
+            } else LessonUi.Ready(lesson, mode, !validator.isValid(lesson.source), target, reachedEnd = false)
         }
         .flowOn(dispatcher)
         .stateIn(viewModelScope, SharingStarted.Eagerly, LessonUi.Loading)

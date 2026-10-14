@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.archieapps.oklo.ui.components.EmptyState
 import com.archieapps.oklo.ui.components.Hairline
+import com.archieapps.oklo.ui.components.InlineProgress
 import com.archieapps.oklo.ui.components.Loading
 import com.archieapps.oklo.ui.components.PrimaryButton
 import com.archieapps.oklo.ui.components.SecondaryButton
@@ -40,9 +41,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-fun LessonScreen(navigator: AppNavigator, deckId: String, mode: LessonMode, target: String?) {
-    val viewModel = appViewModel(key = "lesson-$deckId-${mode.name}-$target") {
-        LessonViewModel(it.lessons, it.preferences, deckId, mode, target)
+fun LessonScreen(navigator: AppNavigator, deckId: String, mode: LessonMode, target: String?, awaitingSync: Boolean = false) {
+    val viewModel = appViewModel(key = "lesson-$deckId-${mode.name}-$target-$awaitingSync") {
+        LessonViewModel(it.lessons, it.preferences, deckId, mode, target, awaitingSync = awaitingSync)
     }
     val ui by viewModel.ui.collectAsStateWithLifecycle()
 
@@ -51,6 +52,21 @@ fun LessonScreen(navigator: AppNavigator, deckId: String, mode: LessonMode, targ
         LessonUi.Missing -> Column(Modifier.fillMaxSize().navigationBarsPadding()) {
             TopBar(title = "Aula", onBack = navigator::back)
             EmptyState(title = "Este deck não tem aula", message = "Ela pode ter sido removida em outro aparelho.") {
+                SecondaryButton("Voltar", onClick = navigator::back, modifier = Modifier.fillMaxWidth())
+            }
+        }
+        LessonUi.Syncing -> Column(Modifier.fillMaxSize().navigationBarsPadding()) {
+            TopBar(title = "Aula", onBack = navigator::back)
+            Column(
+                Modifier.fillMaxWidth().padding(horizontal = Spacing.screenH, vertical = Spacing.xl),
+                verticalArrangement = Arrangement.spacedBy(Spacing.md),
+            ) {
+                InlineProgress("Sincronizando a aula…")
+                Text(
+                    "A aula gerada aparece aqui assim que chegar ao aparelho.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = okloPalette.muted,
+                )
                 SecondaryButton("Voltar", onClick = navigator::back, modifier = Modifier.fillMaxWidth())
             }
         }

@@ -76,7 +76,7 @@ object Routes {
     const val AI_REVIEW = "ai/review"
     const val STUDY = "study?deckId={deckId}"
     const val CONNECT = "connect"
-    const val LESSON = "lesson/{deckId}?mode={mode}&target={target}"
+    const val LESSON = "lesson/{deckId}?mode={mode}&target={target}&sync={sync}"
     const val LESSON_EDIT = "lesson/{deckId}/edit"
 
     fun stats(deckId: String? = null) = if (deckId == null) "stats" else "stats?deckId=$deckId"
@@ -89,9 +89,10 @@ object Routes {
 
     fun editLesson(deckId: String) = "lesson/$deckId/edit"
 
-    fun lesson(deckId: String, mode: LessonRouteMode = LessonRouteMode.Read, target: String? = null): String {
+    fun lesson(deckId: String, mode: LessonRouteMode = LessonRouteMode.Read, target: String? = null, awaitingSync: Boolean = false): String {
         val base = "lesson/$deckId?mode=${mode.key}"
-        return if (target.isNullOrEmpty()) base else base + "&target=" + URLEncoder.encode(target, "UTF-8")
+        val withTarget = if (target.isNullOrEmpty()) base else base + "&target=" + URLEncoder.encode(target, "UTF-8")
+        return if (awaitingSync) "$withTarget&sync=true" else withTarget
     }
 }
 
@@ -224,6 +225,7 @@ fun OkloRoot() {
                         navArgument("deckId") { type = NavType.StringType },
                         navArgument("mode") { type = NavType.StringType; defaultValue = "read" },
                         navArgument("target") { type = NavType.StringType; nullable = true; defaultValue = null },
+                        navArgument("sync") { type = NavType.BoolType; defaultValue = false },
                     ),
                 ) { backStack ->
                     LessonScreen(
@@ -231,6 +233,7 @@ fun OkloRoot() {
                         deckId = backStack.arguments?.getString("deckId").orEmpty(),
                         mode = LessonMode.of(backStack.arguments?.getString("mode")),
                         target = backStack.arguments?.getString("target"),
+                        awaitingSync = backStack.arguments?.getBoolean("sync") ?: false,
                     )
                 }
                 composable(

@@ -42,6 +42,15 @@ class LessonViewModelTest {
         LessonViewModel(f.lessons, f.preferences, "deck-1", mode, target, LessonValidator { valid }, testDispatcher)
 
     @Test
+    fun aiFlowWaitsForTheSyncedLessonInsteadOfMissing() = runTest {
+        val f = fixture(this)
+        val vm = LessonViewModel(f.lessons, f.preferences, "deck-1", LessonMode.Read, null, LessonValidator { true }, testDispatcher, awaitingSync = true)
+        assertEquals(LessonUi.Syncing, vm.ui.value)
+        f.lessons.saveManual("deck-1", "# A")
+        assertTrue(vm.ui.value is LessonUi.Ready)
+    }
+
+    @Test
     fun missingLessonYieldsMissing() = runTest {
         val vm = viewModel(fixture(this), LessonMode.Gate)
         assertTrue(vm.ui.value is LessonUi.Missing)

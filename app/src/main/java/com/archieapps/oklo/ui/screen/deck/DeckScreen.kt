@@ -328,7 +328,7 @@ fun DeckScreen(navigator: AppNavigator, deckId: String) {
             deckId = node.id,
             hasLesson = lesson != null,
             onDismiss = { lessonAiOpen = false },
-            onOpenLesson = { navigator.to(Routes.lesson(node.id)) },
+            onOpenLesson = { navigator.to(Routes.lesson(node.id, awaitingSync = true)) },
         )
     }
 
