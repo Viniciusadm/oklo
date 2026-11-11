@@ -45,7 +45,7 @@ class HomeViewModel(container: Container) : ViewModel() {
     private val now = minuteTicker()
     private val dayStart = now.map { LocalDay.window(it).start }.distinctUntilChanged()
     private val reviewsToday = dayStart.flatMapLatest { container.study.reviewsSince(it) }
-    private val collapsed = MutableStateFlow<Set<String>>(emptySet())
+    private val expanded = MutableStateFlow<Set<String>>(emptySet())
 
     val operations = DeckOperations(container = container, scope = viewModelScope)
 
@@ -53,10 +53,10 @@ class HomeViewModel(container: Container) : ViewModel() {
         container.decks.decks,
         container.cards.stats,
         container.settings.settings,
-        combine(reviewsToday, collapsed) { reviews, hidden -> reviews to hidden },
+        combine(reviewsToday, expanded) { reviews, open -> reviews to open },
         now,
     ) { decks, stats, settings, extra, instant ->
-        val (reviews, hidden) = extra
+        val (reviews, open) = extra
         val window = LocalDay.window(instant)
         val queue = stats.filter { !it.suspended }.map { QueueCard(it.id, CardState.of(it.state), it.dueAt, 0, it.createdAt) }
         val limits = DailyLimits(settings.newPerDay, settings.reviewsPerDay)
@@ -65,14 +65,14 @@ class HomeViewModel(container: Container) : ViewModel() {
         val reviewRoom = (limits.reviewsPerDay - progress.reviewsDone).coerceAtLeast(0)
         val newRoom = (limits.newPerDay - progress.newIntroduced).coerceAtLeast(0)
         val roots = DeckTree.build(decks, stats, window, settings.librarySort)
-        val rows = DeckTree.visible(roots, DeckTree.flatten(roots).map { it.id }.toSet() - hidden).map { node ->
+        val rows = DeckTree.visible(roots, open).map { node ->
             val review = minOf(node.aggregate.reviewDue, reviewRoom)
             HomeDeckRow(
                 node = node,
                 newCount = minOf(node.aggregate.newCount, newRoom, (reviewRoom - review).coerceAtLeast(0)),
                 learning = node.aggregate.learningDue,
                 review = review,
-                expanded = node.id !in hidden,
+                expanded = node.id in open,
             )
         }
         HomeUi(
@@ -83,5 +83,5 @@ class HomeViewModel(container: Container) : ViewModel() {
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    fun toggle(id: String) = collapsed.update { if (id in it) it - id else it + id }
+    fun toggle(id: String) = expanded.update { if (id in it) it - id else it + id }
 }

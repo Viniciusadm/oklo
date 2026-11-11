@@ -67,6 +67,7 @@ import com.archieapps.oklo.ui.components.Metric
 import com.archieapps.oklo.ui.components.Notice
 import com.archieapps.oklo.ui.components.NoticeTone
 import com.archieapps.oklo.ui.components.PrimaryButton
+import com.archieapps.oklo.ui.components.QuietButton
 import com.archieapps.oklo.ui.components.SecondaryButton
 import com.archieapps.oklo.ui.components.SheetAction
 import com.archieapps.oklo.ui.components.plural
@@ -106,11 +107,13 @@ fun StudyScreen(navigator: AppNavigator, deckId: String?) {
                 navigator.home()
             },
             onContinue = viewModel::continueStudying,
+            onUndo = viewModel::undo,
         )
         is StudyUi.Question -> QuestionScreen(
             state = state,
             onExit = exit,
             onMenu = { menu = true },
+            onUndo = viewModel::undo,
             onReveal = viewModel::reveal,
             onTrueFalse = viewModel::respondTrueFalse,
             onChoice = viewModel::respondChoice,
@@ -154,6 +157,7 @@ private fun QuestionScreen(
     state: StudyUi.Question,
     onExit: () -> Unit,
     onMenu: () -> Unit,
+    onUndo: () -> Unit,
     onReveal: () -> Unit,
     onTrueFalse: (Boolean) -> Unit,
     onChoice: (Int) -> Unit,
@@ -169,6 +173,7 @@ private fun QuestionScreen(
                 Text(state.deckName ?: "Todos os decks", style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 SessionCounts(state)
             }
+            IconAction(R.drawable.ic_undo, "Desfazer", onUndo, enabled = state.canUndo && !state.busy)
             IconAction(R.drawable.ic_more, "Opções da sessão", onMenu)
         }
         Hairline()
@@ -480,7 +485,7 @@ private fun reasons(later: List<Long>, reviewsCapped: Boolean, newsCapped: Boole
 }
 
 @Composable
-private fun Completion(state: StudyUi.Done, onHome: () -> Unit, onContinue: () -> Unit) {
+private fun Completion(state: StudyUi.Done, onHome: () -> Unit, onContinue: () -> Unit, onUndo: () -> Unit) {
     val palette = okloPalette
     Column(
         Modifier
@@ -522,6 +527,9 @@ private fun Completion(state: StudyUi.Done, onHome: () -> Unit, onContinue: () -
         )
         Spacer(Modifier.height(Spacing.sm))
         PrimaryButton("Voltar ao início", onClick = onHome)
+        if (state.canUndo) {
+            QuietButton("Desfazer última resposta", onClick = onUndo, icon = R.drawable.ic_undo)
+        }
         if (state.canContinue) {
             SecondaryButton("Continuar estudando", onClick = onContinue, modifier = Modifier.fillMaxWidth())
         }

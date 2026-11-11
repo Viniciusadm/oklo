@@ -132,6 +132,8 @@ object StudyWrites {
 data class AnswerResult(
     val card: Card,
     val scheduledMs: Long,
+    val previous: CardEntity,
+    val reviewId: String,
 )
 
 class StudyRepository(
@@ -190,8 +192,22 @@ class StudyRepository(
             val write = StudyWrites.answer(entity, rating, scheduler, time.now(), durationMs, answeredCorrect, newId())
             db.cards().upsert(write.card)
             db.reviews().insert(write.review)
-            AnswerResult(write.card.toModel(), (write.card.dueAt ?: write.review.reviewedAt) - write.review.reviewedAt)
+            AnswerResult(
+                card = write.card.toModel(),
+                scheduledMs = (write.card.dueAt ?: write.review.reviewedAt) - write.review.reviewedAt,
+                previous = entity,
+                reviewId = write.review.id,
+            )
         }
+    }
+
+    suspend fun undo(previous: CardEntity, reviewId: String): Card? = db.withTransaction {
+        val current = db.cards().get(previous.id) ?: return@withTransaction null
+        val now = time.now()
+        val restored = previous.copy(updatedAt = Stamp.next(current.updatedAt, now), dirty = true)
+        db.cards().upsert(restored)
+        db.reviews().softDelete(reviewId, now)
+        restored.toModel()
     }
 
     private fun CardEntity.toQueueCard(): QueueCard =

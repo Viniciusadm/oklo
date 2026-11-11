@@ -111,6 +111,9 @@ interface ReviewDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAll(reviews: List<ReviewEntity>)
 
+    @Query("UPDATE reviews SET deletedAt = :now, updatedAt = :now, dirty = 1 WHERE id = :id")
+    suspend fun softDelete(id: String, now: Long)
+
     @Query("SELECT * FROM reviews WHERE dirty = 1")
     suspend fun dirty(): List<ReviewEntity>
 

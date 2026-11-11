@@ -6,6 +6,7 @@ import com.archieapps.oklo.Container
 import com.archieapps.oklo.core.fsrs.Rating
 import com.archieapps.oklo.core.sched.CardScheduler
 import com.archieapps.oklo.core.time.LocalDay
+import com.archieapps.oklo.data.db.CardEntity
 import com.archieapps.oklo.data.model.Card
 import com.archieapps.oklo.data.model.CardState
 import com.archieapps.oklo.data.model.CardType
@@ -54,11 +55,13 @@ sealed interface StudyUi {
         val choiceOrder: List<Int> = emptyList(),
         val lessonAvailable: Boolean = false,
         val counts: QueueCounts = QueueCounts(0, 0, 0),
+        val canUndo: Boolean = false,
     ) : StudyUi {
         val canViewInLesson: Boolean get() = revealed && lessonAvailable && !card.lessonTarget.isNullOrBlank()
     }
 
     data class Done(
+        val canUndo: Boolean,
         val deckName: String?,
         val totals: SessionTotals,
         val canContinue: Boolean,
@@ -78,6 +81,14 @@ class StudyViewModel(private val container: Container, private val deckId: Strin
     private var shownAt: Long = 0
     private var totals = SessionTotals()
     private var finished = false
+    private val undoStack = ArrayDeque<UndoEntry>()
+
+    private data class UndoEntry(
+        val previous: CardEntity,
+        val reviewId: String,
+        val session: StudySession.Snapshot,
+        val totals: SessionTotals,
+    )
 
     init {
         start()
@@ -117,6 +128,12 @@ class StudyViewModel(private val container: Container, private val deckId: Strin
                 active.skip(id)
                 continue
             }
+            show(card, active, now)
+            return
+        }
+    }
+
+    private suspend fun show(card: Card, active: StudySession, now: Long) {
             val engine = scheduler ?: container.study.scheduler().also { scheduler = it }
             shownAt = now
             totals = totals.copy(cardsSeen = active.seenCount)
@@ -139,9 +156,8 @@ class StudyViewModel(private val container: Container, private val deckId: Strin
                         CardState.Review -> queued.copy(review = queued.review + 1)
                     }
                 },
+                canUndo = undoStack.isNotEmpty(),
             )
-            return
-        }
     }
 
     fun reveal() {
@@ -193,12 +209,29 @@ class StudyViewModel(private val container: Container, private val deckId: Strin
             )
             val active = session
             if (result != null && active != null) {
+                undoStack.addLast(UndoEntry(result.previous, result.reviewId, active.snapshot(), totals))
+                if (undoStack.size > MAX_UNDO) undoStack.removeFirst()
                 active.answered(current.card.id, result.card.state, result.card.dueAt ?: now, LocalDay.window(now).end)
                 totals = totals.copy(reviews = totals.reviews + 1, timeMs = totals.timeMs + duration, cardsSeen = active.seenCount)
             } else {
                 active?.skip(current.card.id)
             }
             advance()
+        }
+    }
+
+    fun undo() {
+        val current = _ui.value
+        if (current is StudyUi.Question && current.busy) return
+        val entry = undoStack.removeLastOrNull() ?: return
+        val active = session ?: return
+        _ui.value = StudyUi.Loading
+        viewModelScope.launch {
+            val card = container.study.undo(entry.previous, entry.reviewId)
+            active.restore(entry.session)
+            totals = entry.totals
+            finished = false
+            if (card == null) advance() else show(card, active, System.currentTimeMillis())
         }
     }
 
@@ -212,6 +245,7 @@ class StudyViewModel(private val container: Container, private val deckId: Strin
     }
 
     fun continueStudying() {
+        undoStack.clear()
         totals = SessionTotals()
         start()
     }
@@ -221,6 +255,7 @@ class StudyViewModel(private val container: Container, private val deckId: Strin
         val active = session
         val plan: StudyPlan = container.study.plan(deckId, now)
         _ui.value = StudyUi.Done(
+            canUndo = undoStack.isNotEmpty(),
             deckName = deckName,
             totals = totals.copy(cardsSeen = active?.seenCount ?: totals.cardsSeen),
             canContinue = plan.sessionSize > 0,
@@ -248,5 +283,6 @@ class StudyViewModel(private val container: Container, private val deckId: Strin
 
     companion object {
         const val MAX_ANSWER_MS = 120_000L
+        const val MAX_UNDO = 50
     }
 }

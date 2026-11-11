@@ -161,6 +161,25 @@ class StudySession(
         main.remove(cardId)
     }
 
+    data class Snapshot(
+        val main: List<String>,
+        val learning: List<Pair<String, Long>>,
+        val seen: List<String>,
+        val answered: Int,
+    )
+
+    fun snapshot(): Snapshot = Snapshot(main.toList(), learning.toList(), seen.toList(), answered)
+
+    fun restore(snapshot: Snapshot) {
+        main.clear()
+        main.addAll(snapshot.main)
+        learning.clear()
+        learning.addAll(snapshot.learning)
+        seen.clear()
+        seen.addAll(snapshot.seen)
+        answered = snapshot.answered
+    }
+
     fun counts(now: Long): QueueCounts = QueueCounts(
         newCount = main.count { it in newIds },
         learning = learning.count { it.second <= now + learnAheadMs },
