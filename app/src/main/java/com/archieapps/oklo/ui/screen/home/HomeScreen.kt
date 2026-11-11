@@ -1,20 +1,13 @@
 package com.archieapps.oklo.ui.screen.home
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.FloatingActionButton
@@ -32,9 +25,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.archieapps.oklo.R
@@ -42,10 +32,9 @@ import com.archieapps.oklo.domain.DeckNode
 import com.archieapps.oklo.ui.common.DeckDialog
 import com.archieapps.oklo.ui.common.DeckDialogs
 import com.archieapps.oklo.ui.components.ActionSheet
-import com.archieapps.oklo.ui.components.CountColumnWidth
-import com.archieapps.oklo.ui.components.DueCounts
+import com.archieapps.oklo.ui.components.DeckCountsHeader
+import com.archieapps.oklo.ui.components.DeckTreeRow
 import com.archieapps.oklo.ui.components.EmptyState
-import com.archieapps.oklo.ui.components.Hairline
 import com.archieapps.oklo.ui.components.IconAction
 import com.archieapps.oklo.ui.components.Loading
 import com.archieapps.oklo.ui.components.PrimaryButton
@@ -96,13 +85,19 @@ fun HomeScreen(navigator: AppNavigator) {
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 96.dp),
                 ) {
-                    item { CountsHeader() }
+                    item { DeckCountsHeader() }
                     items(state.rows, key = { it.node.id }) { row ->
-                        HomeDeckLine(
-                            row = row,
+                        DeckTreeRow(
+                            name = row.node.deck.name,
+                            depth = row.node.depth,
+                            hasChildren = row.node.hasChildren,
+                            expanded = row.expanded,
+                            newCount = row.newCount,
+                            learning = row.learning,
+                            review = row.review,
                             onOpen = { navigator.to(Routes.deck(row.node.id)) },
                             onToggle = { viewModel.toggle(row.node.id) },
-                            onMenu = { menuFor = row.node },
+                            onLongClick = { menuFor = row.node },
                         )
                     }
                     item {
@@ -156,75 +151,6 @@ fun HomeScreen(navigator: AppNavigator) {
     }
 
     DeckDialogs(dialog, state.roots, viewModel.operations, onDismiss = { dialog = null })
-}
-
-@Composable
-private fun CountsHeader() {
-    val palette = okloPalette
-    Column {
-        Row(
-            Modifier.fillMaxWidth().padding(start = Spacing.screenH, end = Spacing.screenH, top = Spacing.sm, bottom = Spacing.sm),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("Deck", style = MaterialTheme.typography.labelMedium, color = palette.muted, modifier = Modifier.weight(1f))
-            listOf("Novos", "Aprend.", "Revisar").forEach { label ->
-                Text(
-                    label,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = palette.muted,
-                    textAlign = TextAlign.End,
-                    maxLines = 1,
-                    modifier = Modifier.width(CountColumnWidth),
-                )
-            }
-        }
-        Hairline()
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun HomeDeckLine(
-    row: HomeDeckRow,
-    onOpen: () -> Unit,
-    onToggle: () -> Unit,
-    onMenu: () -> Unit,
-) {
-    val node = row.node
-    Column {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .combinedClickable(role = Role.Button, onClick = onOpen, onLongClick = onMenu)
-                .heightIn(min = 48.dp)
-                .padding(start = Spacing.sm + (node.depth * 16).dp, end = Spacing.screenH),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
-                if (node.hasChildren) {
-                    Icon(
-                        painterResource(if (row.expanded) R.drawable.ic_chevron_down else R.drawable.ic_chevron_right),
-                        contentDescription = if (row.expanded) "Recolher" else "Expandir",
-                        tint = okloPalette.muted,
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clickable(role = Role.Button, onClick = onToggle)
-                            .padding(4.dp),
-                    )
-                }
-            }
-            Text(
-                node.deck.name,
-                style = MaterialTheme.typography.bodyLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-            Spacer(Modifier.width(Spacing.xs))
-            DueCounts(row.newCount, row.learning, row.review)
-        }
-        Hairline(Modifier.padding(start = Spacing.screenH))
-    }
 }
 
 @Composable

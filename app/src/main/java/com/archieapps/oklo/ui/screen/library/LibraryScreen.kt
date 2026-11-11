@@ -32,7 +32,8 @@ import com.archieapps.oklo.domain.DeckNode
 import com.archieapps.oklo.ui.common.DeckDialog
 import com.archieapps.oklo.ui.common.DeckDialogs
 import com.archieapps.oklo.ui.components.ActionSheet
-import com.archieapps.oklo.ui.components.DeckRow
+import com.archieapps.oklo.ui.components.DeckCountsHeader
+import com.archieapps.oklo.ui.components.DeckTreeRow
 import com.archieapps.oklo.ui.components.EmptyState
 import com.archieapps.oklo.ui.components.IconAction
 import com.archieapps.oklo.ui.components.Loading
@@ -114,14 +115,20 @@ fun LibraryScreen(navigator: AppNavigator) {
                     contentPadding = PaddingValues(bottom = Spacing.screenBottom),
                     modifier = Modifier.fillMaxSize(),
                 ) {
+                    item { DeckCountsHeader() }
                     items(state.rows, key = { it.id }) { node ->
-                        LibraryDeckRow(
-                            node = node,
-                            showPath = state.searching,
+                        DeckTreeRow(
+                            name = node.deck.name,
+                            depth = if (state.searching) 0 else node.depth,
+                            hasChildren = node.hasChildren && !state.searching,
                             expanded = node.id in state.expanded,
+                            newCount = node.aggregate.newCount,
+                            learning = node.aggregate.learningDue,
+                            review = node.aggregate.reviewDue,
+                            subtitle = node.pathLabel.takeIf { state.searching && node.path.size > 1 },
                             onOpen = { navigator.to(Routes.deck(node.id)) },
                             onToggle = { viewModel.toggle(node.id) },
-                            onMenu = { menuFor = node },
+                            onLongClick = { menuFor = node },
                         )
                     }
                 }
@@ -227,34 +234,6 @@ private fun SearchBar(
             },
         )
     }
-}
-
-@Composable
-private fun LibraryDeckRow(
-    node: DeckNode,
-    showPath: Boolean,
-    expanded: Boolean,
-    onOpen: () -> Unit,
-    onToggle: () -> Unit,
-    onMenu: () -> Unit,
-) {
-    val subtitle = if (showPath && node.path.size > 1) "${node.pathLabel}\n${deckSubtitle(node)}" else deckSubtitle(node)
-    DeckRow(
-        node = node,
-        subtitle = subtitle,
-        onClick = onOpen,
-        depth = if (showPath) 0 else node.depth,
-        trailing = {
-            if (node.hasChildren && !showPath) {
-                IconAction(
-                    icon = if (expanded) R.drawable.ic_chevron_down else R.drawable.ic_chevron_right,
-                    contentDescription = if (expanded) "Recolher subdecks" else "Expandir subdecks",
-                    onClick = onToggle,
-                )
-            }
-            IconAction(R.drawable.ic_more, "Ações do deck ${node.deck.name}", onMenu)
-        },
-    )
 }
 
 fun deckSubtitle(node: DeckNode): String {

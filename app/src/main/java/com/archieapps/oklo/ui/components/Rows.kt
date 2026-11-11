@@ -4,6 +4,7 @@ import androidx.annotation.DrawableRes
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -200,5 +201,80 @@ fun Metric(
             }
             Text(label, style = MaterialTheme.typography.bodySmall, color = okloPalette.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun DeckTreeRow(
+    name: String,
+    depth: Int,
+    hasChildren: Boolean,
+    expanded: Boolean,
+    newCount: Int,
+    learning: Int,
+    review: Int,
+    onOpen: () -> Unit,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    onLongClick: (() -> Unit)? = null,
+) {
+    Column(modifier) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .combinedClickable(role = Role.Button, onClick = onOpen, onLongClick = onLongClick)
+                .heightIn(min = 48.dp)
+                .padding(start = Spacing.sm + (depth * 16).dp, end = Spacing.screenH),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+                if (hasChildren) {
+                    Icon(
+                        painterResource(if (expanded) R.drawable.ic_chevron_down else R.drawable.ic_chevron_right),
+                        contentDescription = if (expanded) "Recolher" else "Expandir",
+                        tint = okloPalette.muted,
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clickable(role = Role.Button, onClick = onToggle)
+                            .padding(4.dp),
+                    )
+                }
+            }
+            Column(Modifier.weight(1f).padding(vertical = Spacing.xs)) {
+                Text(name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (subtitle != null) {
+                    Text(subtitle, style = MaterialTheme.typography.bodySmall, color = okloPalette.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            Spacer(Modifier.width(Spacing.xs))
+            DueCounts(newCount, learning, review)
+        }
+        Hairline(Modifier.padding(start = Spacing.screenH))
+    }
+}
+
+@Composable
+fun DeckCountsHeader(modifier: Modifier = Modifier) {
+    val palette = okloPalette
+    Column(modifier) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = Spacing.screenH, end = Spacing.screenH, top = Spacing.sm, bottom = Spacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Deck", style = MaterialTheme.typography.labelMedium, color = palette.muted, modifier = Modifier.weight(1f))
+            listOf("Novos", "Aprend.", "Revisar").forEach { label ->
+                Text(
+                    label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = palette.muted,
+                    textAlign = TextAlign.End,
+                    maxLines = 1,
+                    modifier = Modifier.width(CountColumnWidth),
+                )
+            }
+        }
+        Hairline()
     }
 }
