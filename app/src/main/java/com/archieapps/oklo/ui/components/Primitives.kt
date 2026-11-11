@@ -80,7 +80,7 @@ fun TopBar(
                 if (subtitle != null) Eyebrow(subtitle)
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.headlineLarge,
+                    style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.semantics { heading() },
                 )
@@ -89,7 +89,7 @@ fun TopBar(
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 60.dp)
+                    .heightIn(min = 56.dp)
                     .padding(start = if (onBack == null) Spacing.screenH else Spacing.xs, end = Spacing.xs),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -151,7 +151,7 @@ fun Hairline(modifier: Modifier = Modifier, startIndent: Dp = 0.dp) {
 @Composable
 fun SectionCard(
     modifier: Modifier = Modifier,
-    padding: PaddingValues = PaddingValues(18.dp),
+    padding: PaddingValues = PaddingValues(14.dp),
     spacing: Dp = Spacing.md,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -159,7 +159,6 @@ fun SectionCard(
         modifier = modifier.fillMaxWidth(),
         shape = Radii.surface,
         color = okloPalette.sheet,
-        border = BorderStroke(1.dp, okloPalette.hairline),
     ) {
         Column(Modifier.padding(padding), verticalArrangement = Arrangement.spacedBy(spacing), content = content)
     }
@@ -180,8 +179,8 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier, action: (@Composab
 @Composable
 fun Eyebrow(text: String, modifier: Modifier = Modifier, color: Color = okloPalette.muted) {
     Text(
-        text = text.uppercase(),
-        style = MaterialTheme.typography.labelMedium,
+        text = text,
+        style = MaterialTheme.typography.titleSmall,
         color = color,
         modifier = modifier,
     )
@@ -194,7 +193,12 @@ private fun ButtonIcon(@DrawableRes icon: Int?, vector: ImageVector?, size: Dp) 
         vector != null -> Icon(vector, contentDescription = null, modifier = Modifier.size(size))
         else -> return
     }
-    Spacer(Modifier.width(Spacing.sm))
+    Spacer(Modifier.width(6.dp))
+}
+
+@Composable
+private fun ButtonLabel(label: String) {
+    Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
 }
 
 @Composable
@@ -211,23 +215,23 @@ fun PrimaryButton(
     Button(
         onClick = onClick,
         enabled = enabled && !loading,
-        modifier = modifier.fillMaxWidth().heightIn(min = 52.dp),
-        shape = Radii.pill,
+        modifier = modifier.heightIn(min = 44.dp),
+        shape = Radii.control,
         colors = ButtonDefaults.buttonColors(
-            containerColor = palette.ink,
-            contentColor = palette.onInk,
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
             disabledContainerColor = palette.hairline,
             disabledContentColor = palette.faint,
         ),
-        contentPadding = PaddingValues(horizontal = Spacing.xl, vertical = Spacing.md),
+        contentPadding = PaddingValues(horizontal = Spacing.lg, vertical = Spacing.sm),
     ) {
         if (loading) {
-            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = palette.faint)
-            Spacer(Modifier.width(Spacing.md))
+            CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = palette.faint)
+            Spacer(Modifier.width(Spacing.sm))
         } else {
-            ButtonIcon(icon, vector, 20.dp)
+            ButtonIcon(icon, vector, 18.dp)
         }
-        Text(label, style = MaterialTheme.typography.labelLarge)
+        ButtonLabel(label)
     }
 }
 
@@ -245,14 +249,14 @@ fun SecondaryButton(
     OutlinedButton(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier.heightIn(min = 48.dp),
-        shape = Radii.pill,
+        modifier = modifier.heightIn(min = 44.dp),
+        shape = Radii.control,
         border = BorderStroke(1.dp, if (enabled) MaterialTheme.colorScheme.outline else okloPalette.hairline),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = content, disabledContentColor = okloPalette.faint),
-        contentPadding = PaddingValues(horizontal = Spacing.xl - 4.dp, vertical = Spacing.md - 2.dp),
+        contentPadding = PaddingValues(horizontal = Spacing.md + 2.dp, vertical = Spacing.sm),
     ) {
         ButtonIcon(icon, vector, 18.dp)
-        Text(label, style = MaterialTheme.typography.labelLarge)
+        ButtonLabel(label)
     }
 }
 
@@ -274,13 +278,13 @@ fun QuietButton(
     TextButton(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier.heightIn(min = 44.dp),
-        shape = Radii.pill,
+        modifier = modifier.heightIn(min = 40.dp),
+        shape = Radii.control,
         colors = ButtonDefaults.textButtonColors(contentColor = content, disabledContentColor = okloPalette.faint),
-        contentPadding = PaddingValues(horizontal = Spacing.md, vertical = Spacing.sm),
+        contentPadding = PaddingValues(horizontal = Spacing.md, vertical = Spacing.xs),
     ) {
         ButtonIcon(icon, null, 18.dp)
-        Text(label, style = MaterialTheme.typography.labelLarge)
+        ButtonLabel(label)
     }
 }
 
@@ -300,21 +304,20 @@ fun EmptyState(
         if (icon != null) {
             Box(
                 Modifier
-                    .size(64.dp)
-                    .background(okloPalette.sheet, CircleShape)
-                    .border(1.dp, okloPalette.hairline, CircleShape),
+                    .size(52.dp)
+                    .background(okloPalette.sheet, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     painterResource(icon),
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(28.dp),
+                    tint = okloPalette.muted,
+                    modifier = Modifier.size(24.dp),
                 )
             }
             Spacer(Modifier.height(Spacing.xs))
         }
-        Text(title, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
+        Text(title, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
         Text(message, style = MaterialTheme.typography.bodyMedium, color = okloPalette.muted, textAlign = TextAlign.Center)
         Spacer(Modifier.height(Spacing.sm))
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Spacing.sm), horizontalAlignment = Alignment.CenterHorizontally) {

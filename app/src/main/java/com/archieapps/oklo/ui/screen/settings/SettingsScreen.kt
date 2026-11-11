@@ -24,15 +24,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -55,8 +55,6 @@ import com.archieapps.oklo.ui.components.InlineProgress
 import com.archieapps.oklo.ui.components.ListGroup
 import com.archieapps.oklo.ui.components.ListRow
 import com.archieapps.oklo.ui.components.Loading
-import com.archieapps.oklo.ui.components.Notice
-import com.archieapps.oklo.ui.components.NoticeTone
 import com.archieapps.oklo.ui.components.OkloSlider
 import com.archieapps.oklo.ui.components.OkloTextField
 import com.archieapps.oklo.ui.components.PrimaryButton
@@ -256,7 +254,7 @@ private fun StudySection(viewModel: SettingsViewModel, onDirty: (Boolean) -> Uni
         NumberField("Revisões por dia", reviewsPerDay, { reviewsPerDay = it }, reviewError, "Teto diário de revisões. Cards novos também contam, como no Anki.")
         PrimaryButton("Salvar", onClick = {
             viewModel.update { it.copy(newPerDay = newValue!!, reviewsPerDay = reviewValue!!) }
-        }, enabled = dirty && newError == null && reviewError == null)
+        }, enabled = dirty && newError == null && reviewError == null, modifier = Modifier.fillMaxWidth())
     }
     SectionCard {
         Eyebrow("Comportamento da sessão")
@@ -554,7 +552,7 @@ private fun AccountSection(viewModel: SettingsViewModel, navigator: AppNavigator
         syncMeta.lastError?.let {
             Text("Última falha: $it", style = MaterialTheme.typography.bodySmall, color = okloPalette.danger)
         }
-        PrimaryButton("Sincronizar agora", onClick = viewModel::syncNow, loading = sync.running)
+        PrimaryButton("Sincronizar agora", onClick = viewModel::syncNow, loading = sync.running, modifier = Modifier.fillMaxWidth())
         Text(
             "O app também sincroniza ao abrir, ao fim de cada sessão de estudo, depois de salvar cards da IA e periodicamente quando há internet.",
             style = MaterialTheme.typography.bodySmall,

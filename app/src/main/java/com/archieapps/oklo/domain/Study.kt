@@ -103,6 +103,12 @@ object StudyPlanner {
     }
 }
 
+data class QueueCounts(
+    val newCount: Int,
+    val learning: Int,
+    val review: Int,
+)
+
 class StudySession(
     plan: StudyPlan,
     private val learnAheadMs: Long = StudyPlanner.LEARN_AHEAD_MS,
@@ -116,6 +122,8 @@ class StudySession(
     }
 
     private val seen = LinkedHashSet<String>()
+
+    private val newIds = plan.news.map { it.id }.toSet()
 
     var answered: Int = 0
         private set
@@ -152,6 +160,12 @@ class StudySession(
         learning.removeAll { it.first == cardId }
         main.remove(cardId)
     }
+
+    fun counts(now: Long): QueueCounts = QueueCounts(
+        newCount = main.count { it in newIds },
+        learning = learning.count { it.second <= now + learnAheadMs },
+        review = main.count { it !in newIds },
+    )
 
     fun remaining(now: Long): Int = main.size + learning.count { it.second <= now + learnAheadMs }
 

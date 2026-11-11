@@ -22,16 +22,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -45,7 +43,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.archieapps.oklo.R
 import com.archieapps.oklo.ui.components.Hairline
-import com.archieapps.oklo.ui.theme.Spacing
 import com.archieapps.oklo.ui.theme.okloPalette
 import com.archieapps.oklo.ui.screen.ai.AiCreateScreen
 import com.archieapps.oklo.ui.screen.ai.AiReviewScreen
@@ -256,7 +253,7 @@ private fun OkloBottomBar(currentRoute: String?, onSelect: (TabItem) -> Unit) {
             Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .height(64.dp)
+                .height(56.dp)
                 .selectableGroup(),
         ) {
             Tabs.forEach { tab ->
@@ -269,24 +266,15 @@ private fun OkloBottomBar(currentRoute: String?, onSelect: (TabItem) -> Unit) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
+                    val tint = if (selected) MaterialTheme.colorScheme.primary else palette.muted
                     Icon(
                         painterResource(tab.icon),
                         contentDescription = null,
-                        tint = if (selected) palette.ink else palette.faint,
+                        tint = tint,
                         modifier = Modifier.size(22.dp),
                     )
-                    Spacer(Modifier.height(Spacing.xs))
-                    Text(
-                        tab.label,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (selected) palette.ink else palette.faint,
-                    )
-                    Spacer(Modifier.height(Spacing.xs))
-                    Box(
-                        Modifier
-                            .size(4.dp)
-                            .background(if (selected) MaterialTheme.colorScheme.primary else Color.Transparent, CircleShape),
-                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(tab.label, style = MaterialTheme.typography.labelSmall, color = tint)
                 }
             }
         }

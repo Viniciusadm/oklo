@@ -7,7 +7,9 @@ import com.archieapps.oklo.core.fsrs.Rating
 import com.archieapps.oklo.core.sched.CardScheduler
 import com.archieapps.oklo.core.time.LocalDay
 import com.archieapps.oklo.data.model.Card
+import com.archieapps.oklo.data.model.CardState
 import com.archieapps.oklo.data.model.CardType
+import com.archieapps.oklo.domain.QueueCounts
 import com.archieapps.oklo.domain.StudyPlan
 import com.archieapps.oklo.domain.StudySession
 import kotlinx.coroutines.NonCancellable
@@ -51,6 +53,7 @@ sealed interface StudyUi {
         val busy: Boolean,
         val choiceOrder: List<Int> = emptyList(),
         val lessonAvailable: Boolean = false,
+        val counts: QueueCounts = QueueCounts(0, 0, 0),
     ) : StudyUi {
         val canViewInLesson: Boolean get() = revealed && lessonAvailable && !card.lessonTarget.isNullOrBlank()
     }
@@ -129,6 +132,13 @@ class StudyViewModel(private val container: Container, private val deckId: Strin
                 busy = false,
                 choiceOrder = card.content.choices.orEmpty().indices.shuffled(),
                 lessonAvailable = !card.lessonTarget.isNullOrBlank() && container.lessons.get(card.deckId) != null,
+                counts = active.counts(now).let { queued ->
+                    when (card.state) {
+                        CardState.New -> queued.copy(newCount = queued.newCount + 1)
+                        CardState.Learning, CardState.Relearning -> queued.copy(learning = queued.learning + 1)
+                        CardState.Review -> queued.copy(review = queued.review + 1)
+                    }
+                },
             )
             return
         }

@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -13,13 +15,13 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -37,7 +39,6 @@ import com.archieapps.oklo.ui.components.Loading
 import com.archieapps.oklo.ui.components.OkloTextField
 import com.archieapps.oklo.ui.components.PrimaryButton
 import com.archieapps.oklo.ui.components.SecondaryButton
-import com.archieapps.oklo.ui.components.SectionTitle
 import com.archieapps.oklo.ui.components.SheetAction
 import com.archieapps.oklo.ui.components.TopBar
 import com.archieapps.oklo.ui.components.plural
@@ -70,7 +71,8 @@ fun LibraryScreen(navigator: AppNavigator) {
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
-            TopBar(title = "Biblioteca", large = true) {
+            TopBar(title = "Biblioteca") {
+                IconAction(R.drawable.ic_plus, "Adicionar deck ou criar cards com IA", { addMenu = true })
                 IconAction(R.drawable.ic_settings, "Configurações", { navigator.to(Routes.SETTINGS) })
             }
             SearchBar(
@@ -81,11 +83,7 @@ fun LibraryScreen(navigator: AppNavigator) {
                 onFilter = viewModel::setFilter,
                 onSort = viewModel::setSort,
             )
-            SectionTitle(
-                text = if (state.searching) "Resultados" else "Minha biblioteca",
-                modifier = Modifier.padding(start = Spacing.screenH, end = Spacing.xs, top = Spacing.lg, bottom = Spacing.xs),
-                action = { IconAction(R.drawable.ic_plus, "Adicionar deck ou criar cards com IA", { addMenu = true }) },
-            )
+            Spacer(Modifier.height(Spacing.sm))
 
             when {
                 state.roots.isEmpty() -> EmptyState(
@@ -94,7 +92,7 @@ fun LibraryScreen(navigator: AppNavigator) {
                     icon = R.drawable.ic_library,
                 ) {
                     PrimaryButton("Novo deck", onClick = { dialog = DeckDialog.Create(null, null) }, icon = R.drawable.ic_plus)
-                    SecondaryButton("Criar cards com IA", onClick = { navigator.to(Routes.aiCreate()) }, icon = R.drawable.ic_sparkle, modifier = Modifier.fillMaxWidth())
+                    SecondaryButton("Criar cards com IA", onClick = { navigator.to(Routes.aiCreate()) }, icon = R.drawable.ic_sparkle)
                 }
 
                 state.rows.isEmpty() -> EmptyState(
@@ -264,7 +262,5 @@ fun deckSubtitle(node: DeckNode): String {
     val parts = mutableListOf<String>()
     if (node.hasChildren) parts += plural(node.descendantCount, "subdeck", "subdecks")
     parts += plural(counts.total, "card", "cards")
-    if (counts.pending > 0) parts += plural(counts.pending, "pendente", "pendentes")
-    if (counts.newCount > 0) parts += plural(counts.newCount, "novo", "novos")
     return parts.joinToString(" · ")
 }

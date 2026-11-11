@@ -1,10 +1,8 @@
 package com.archieapps.oklo.ui.components
 
 import androidx.annotation.DrawableRes
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -76,8 +75,8 @@ fun ListRow(
         Row(
             clickModifier
                 .fillMaxWidth()
-                .heightIn(min = 60.dp)
-                .padding(start = startPadding, end = endPadding, top = Spacing.md - 2.dp, bottom = Spacing.md - 2.dp),
+                .heightIn(min = 52.dp)
+                .padding(start = startPadding, end = endPadding, top = Spacing.sm, bottom = Spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             when {
@@ -120,7 +119,6 @@ fun ListGroup(modifier: Modifier = Modifier, content: @Composable ColumnScope.()
         modifier = modifier.fillMaxWidth(),
         shape = Radii.surface,
         color = okloPalette.sheet,
-        border = BorderStroke(1.dp, okloPalette.hairline),
     ) {
         Column(Modifier.padding(vertical = Spacing.xs), content = content)
     }
@@ -146,26 +144,38 @@ fun DeckRow(
         onLongClick = onLongClick,
         modifier = modifier,
         divider = divider,
-        startPadding = insetH + (depth * 20).dp,
+        startPadding = insetH + (depth * 16).dp,
         endPadding = if (trailing != null) Spacing.xs else insetH,
-        leading = { DeckIcon(node.hasChildren) },
         chevron = chevron,
         trailing = {
-            val pending = node.aggregate.pending
-            if (pending > 0) PendingCount(pending)
+            DueCounts(node.aggregate.newCount, node.aggregate.learningDue, node.aggregate.reviewDue)
             trailing?.invoke(this)
         },
     )
 }
 
+val CountColumnWidth = 52.dp
+
 @Composable
-fun PendingCount(value: Int, modifier: Modifier = Modifier) {
+fun DueCount(value: Int, color: Color, modifier: Modifier = Modifier) {
     Text(
         value.toString(),
-        style = MaterialTheme.typography.titleLarge,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = modifier.padding(horizontal = Spacing.xs),
+        style = MaterialTheme.typography.titleSmall,
+        color = if (value > 0) color else okloPalette.faint,
+        textAlign = TextAlign.End,
+        maxLines = 1,
+        modifier = modifier.width(CountColumnWidth),
     )
+}
+
+@Composable
+fun DueCounts(newCount: Int, learning: Int, review: Int, modifier: Modifier = Modifier) {
+    val palette = okloPalette
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        DueCount(newCount, palette.newCount)
+        DueCount(learning, palette.learnCount)
+        DueCount(review, palette.reviewCount)
+    }
 }
 
 @Composable
@@ -179,7 +189,6 @@ fun Metric(
     Column(
         modifier
             .background(okloPalette.sheet, Radii.control)
-            .border(1.dp, okloPalette.hairline, Radii.control)
             .padding(horizontal = Spacing.md + 2.dp, vertical = Spacing.md),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {

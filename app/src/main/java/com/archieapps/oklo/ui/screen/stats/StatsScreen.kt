@@ -18,8 +18,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -63,7 +63,7 @@ fun StatsScreen(navigator: AppNavigator, deckId: String?) {
 
     Column(Modifier.fillMaxSize()) {
         if (deckId == null) {
-            TopBar(title = "Estatísticas", large = true) {
+            TopBar(title = "Estatísticas") {
                 IconAction(R.drawable.ic_settings, "Configurações", onClick = { navigator.to(Routes.SETTINGS) })
             }
         } else {

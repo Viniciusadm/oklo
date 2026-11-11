@@ -30,29 +30,29 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.archieapps.oklo.R
 import com.archieapps.oklo.core.fsrs.IntervalFormat
 import com.archieapps.oklo.core.fsrs.Rating
+import com.archieapps.oklo.data.model.CardState
 import com.archieapps.oklo.data.model.CardType
 import com.archieapps.oklo.ui.common.clock
 import com.archieapps.oklo.ui.common.frontLabel
@@ -60,13 +60,13 @@ import com.archieapps.oklo.ui.components.ActionSheet
 import com.archieapps.oklo.ui.components.CenteredEmptyState
 import com.archieapps.oklo.ui.components.ConfirmDialog
 import com.archieapps.oklo.ui.components.Eyebrow
+import com.archieapps.oklo.ui.components.Hairline
 import com.archieapps.oklo.ui.components.IconAction
 import com.archieapps.oklo.ui.components.Loading
 import com.archieapps.oklo.ui.components.Metric
 import com.archieapps.oklo.ui.components.Notice
 import com.archieapps.oklo.ui.components.NoticeTone
 import com.archieapps.oklo.ui.components.PrimaryButton
-import com.archieapps.oklo.ui.components.ProgressLine
 import com.archieapps.oklo.ui.components.SecondaryButton
 import com.archieapps.oklo.ui.components.SheetAction
 import com.archieapps.oklo.ui.components.plural
@@ -167,16 +167,11 @@ private fun QuestionScreen(
             IconAction(R.drawable.ic_close, "Sair da sessão", onExit)
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(state.deckName ?: "Todos os decks", style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("${state.position} de ${state.total} cards", style = MaterialTheme.typography.bodySmall, color = palette.muted)
+                SessionCounts(state)
             }
             IconAction(R.drawable.ic_more, "Opções da sessão", onMenu)
         }
-        ProgressLine(
-            progress = ((state.position - 1).toFloat() / state.total.coerceAtLeast(1)).coerceIn(0f, 1f),
-            modifier = Modifier
-                .padding(horizontal = Spacing.screenH, vertical = Spacing.xs)
-                .semantics { contentDescription = "Posição na sessão: ${state.position} de ${state.total}" },
-        )
+        Hairline()
         key(state.card.id) {
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
                 Column(
@@ -223,7 +218,7 @@ private fun QuestionScreen(
         Column(Modifier.fillMaxWidth().padding(horizontal = Spacing.screenH, vertical = Spacing.lg)) {
             when {
                 !state.revealed && (content.type == CardType.Basic || content.type == CardType.Qa) ->
-                    PrimaryButton("Mostrar resposta", onClick = onReveal, icon = R.drawable.ic_visibility)
+                    PrimaryButton("Mostrar resposta", onClick = onReveal, icon = R.drawable.ic_visibility, modifier = Modifier.fillMaxWidth())
 
                 !state.revealed -> Text(
                     if (content.type == CardType.TrueFalse) "Escolha verdadeiro ou falso." else "Escolha uma alternativa.",
@@ -247,11 +242,8 @@ private fun Flashcard(state: StudyUi.Question) {
     Column(
         Modifier
             .fillMaxWidth()
-            .heightIn(min = if (hasBack) 240.dp else 160.dp)
-            .shadow(6.dp, Radii.surface, ambientColor = palette.ink.copy(alpha = 0.10f), spotColor = palette.ink.copy(alpha = 0.10f))
-            .background(palette.sheet, Radii.surface)
-            .border(1.dp, palette.hairline, Radii.surface)
-            .padding(horizontal = Spacing.xl, vertical = Spacing.xl + 4.dp),
+            .heightIn(min = if (hasBack) 200.dp else 120.dp)
+            .padding(horizontal = Spacing.sm, vertical = Spacing.xl),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Spacing.lg, Alignment.CenterVertically),
     ) {
@@ -393,48 +385,72 @@ private val RatingLabels = listOf(
 )
 
 @Composable
+private fun SessionCounts(state: StudyUi.Question) {
+    val palette = okloPalette
+    val current = when (state.card.state) {
+        CardState.New -> 0
+        CardState.Learning, CardState.Relearning -> 1
+        CardState.Review -> 2
+    }
+    val values = listOf(
+        state.counts.newCount to palette.newCount,
+        state.counts.learning to palette.learnCount,
+        state.counts.review to palette.reviewCount,
+    )
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+        modifier = Modifier.semantics {
+            contentDescription = "${state.counts.newCount} novos, ${state.counts.learning} em aprendizado, ${state.counts.review} para revisar"
+        },
+    ) {
+        values.forEachIndexed { index, (value, color) ->
+            Text(
+                value.toString(),
+                style = MaterialTheme.typography.labelLarge,
+                color = color,
+                textDecoration = if (index == current) TextDecoration.Underline else null,
+            )
+        }
+    }
+}
+
+@Composable
 private fun RatingBar(state: StudyUi.Question, onRate: (Rating) -> Unit) {
     val palette = okloPalette
     val suggestAgain = state.answeredCorrect == false
-    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm + 2.dp)) {
-        Eyebrow("Como foi lembrar?", modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.xs))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-            RatingLabels.forEach { (rating, label) ->
-                val (color, container) = when (rating) {
-                    Rating.Again -> palette.danger to palette.dangerContainer
-                    Rating.Hard -> palette.warning to palette.warningContainer
-                    Rating.Good -> MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.primaryContainer
-                    Rating.Easy -> palette.success to palette.successContainer
-                }
-                val suggested = suggestAgain && rating == Rating.Again
-                val interval = state.intervals[rating]?.let { IntervalFormat.short(it) }
-                Column(
-                    Modifier
-                        .weight(1f)
-                        .heightIn(min = 68.dp)
-                        .clip(Radii.control)
-                        .background(container)
-                        .border(if (suggested) 2.dp else 0.dp, if (suggested) color else Color.Transparent, Radii.control)
-                        .clickable(enabled = !state.busy, role = Role.Button) { onRate(rating) }
-                        .semantics {
-                            contentDescription = buildString {
-                                append(label)
-                                if (interval != null) append(", próxima revisão em $interval")
-                                if (suggested) append(", sugerido")
-                            }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.xs + 2.dp)) {
+        RatingLabels.forEach { (rating, label) ->
+            val color = when (rating) {
+                Rating.Again -> palette.again
+                Rating.Hard -> palette.hard
+                Rating.Good -> palette.good
+                Rating.Easy -> palette.easy
+            }
+            val suggested = suggestAgain && rating == Rating.Again
+            val interval = state.intervals[rating]?.let { IntervalFormat.short(it) }
+            Column(
+                Modifier
+                    .weight(1f)
+                    .heightIn(min = 56.dp)
+                    .clip(Radii.control)
+                    .background(palette.sheet)
+                    .border(if (suggested) 2.dp else 1.dp, if (suggested) color else palette.hairline, Radii.control)
+                    .clickable(enabled = !state.busy, role = Role.Button) { onRate(rating) }
+                    .semantics {
+                        contentDescription = buildString {
+                            append(label)
+                            if (interval != null) append(", próxima revisão em $interval")
+                            if (suggested) append(", sugerido")
                         }
-                        .padding(horizontal = Spacing.xs, vertical = Spacing.sm + 2.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    Text(label, color = color, style = MaterialTheme.typography.titleSmall, maxLines = 1)
-                    if (interval != null) {
-                        Text(interval, style = MaterialTheme.typography.bodySmall, color = palette.muted, maxLines = 1)
                     }
-                    if (suggested) {
-                        Text("sugerido", style = MaterialTheme.typography.labelSmall, color = color)
-                    }
+                    .padding(horizontal = 2.dp, vertical = Spacing.sm),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                if (interval != null) {
+                    Text(interval, style = MaterialTheme.typography.labelSmall, color = palette.muted, maxLines = 1)
                 }
+                Text(label, color = color, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }

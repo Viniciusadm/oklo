@@ -13,9 +13,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -76,7 +76,7 @@ fun ConnectScreen(navigator: AppNavigator) {
                 modifier = Modifier.fillMaxWidth(),
             )
             state.error?.let { Notice(it, tone = NoticeTone.Error) }
-            PrimaryButton("Entrar", onClick = viewModel::submit, loading = state.busy)
+            PrimaryButton("Entrar", onClick = viewModel::submit, loading = state.busy, modifier = Modifier.fillMaxWidth())
             Text("Servidor: ${BuildConfig.BASE_URL}", style = MaterialTheme.typography.bodySmall, color = okloPalette.faint)
         }
     }

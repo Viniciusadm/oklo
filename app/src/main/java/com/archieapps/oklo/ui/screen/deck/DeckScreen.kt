@@ -24,17 +24,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -62,14 +63,12 @@ import com.archieapps.oklo.ui.components.IconAction
 import com.archieapps.oklo.ui.components.InlineProgress
 import com.archieapps.oklo.ui.components.ListRow
 import com.archieapps.oklo.ui.components.Loading
-import com.archieapps.oklo.ui.components.Metric
 import com.archieapps.oklo.ui.components.Notice
 import com.archieapps.oklo.ui.components.NoticeTone
 import com.archieapps.oklo.ui.components.OkloSheet
 import com.archieapps.oklo.ui.components.PrimaryButton
 import com.archieapps.oklo.ui.components.QuietButton
 import com.archieapps.oklo.ui.components.SecondaryButton
-import com.archieapps.oklo.ui.components.SectionCard
 import com.archieapps.oklo.ui.components.SegmentedTabs
 import com.archieapps.oklo.ui.components.SheetAction
 import com.archieapps.oklo.ui.components.Tag
@@ -140,7 +139,8 @@ fun DeckScreen(navigator: AppNavigator, deckId: String) {
                 subtitle = node.pathLabel.takeIf { node.path.size > 1 },
                 onBack = navigator::back,
             ) {
-                IconAction(R.drawable.ic_edit, "Editar nome", { dialog = DeckDialog.Rename(node.id, node.deck.name) })
+                IconAction(R.drawable.ic_plus, "Adicionar card", { navigator.to(Routes.newCard(node.id)) })
+                IconAction(R.drawable.ic_sparkle, "Gerar cards com IA", { navigator.to(Routes.aiCreate(node.id)) })
                 IconAction(R.drawable.ic_more, "Mais ações do deck", { headerMenu = true })
             }
             LazyColumn(
@@ -162,8 +162,6 @@ fun DeckScreen(navigator: AppNavigator, deckId: String) {
                             lessonAiOpen = true
                         },
                         onStudy = { viewModel.study(node.id, navigator::to) },
-                        onAddCard = { navigator.to(Routes.newCard(node.id)) },
-                        onAi = { navigator.to(Routes.aiCreate(node.id)) },
                         modifier = Modifier.padding(horizontal = Spacing.screenH).padding(top = Spacing.sm, bottom = Spacing.lg),
                     )
                 }
@@ -190,9 +188,9 @@ fun DeckScreen(navigator: AppNavigator, deckId: String) {
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = okloPalette.muted,
                             )
-                            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), verticalAlignment = Alignment.CenterVertically) {
-                                PrimaryButton("Salvar ordem", onClick = viewModel::finishReorder, modifier = Modifier.weight(1f))
-                                SecondaryButton("Cancelar", onClick = viewModel::cancelReorder)
+                            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm, Alignment.End), verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                QuietButton("Cancelar", onClick = viewModel::cancelReorder)
+                                PrimaryButton("Salvar ordem", onClick = viewModel::finishReorder)
                             }
                         }
                         Hairline()
@@ -236,8 +234,8 @@ fun DeckScreen(navigator: AppNavigator, deckId: String) {
                                 message = if (node.hasChildren) "Os cards dos subdecks continuam nos subdecks. Adicione cards aqui ou gere com IA." else "Adicione manualmente ou gere a partir de um texto com IA.",
                                 icon = R.drawable.ic_layers,
                             ) {
-                                PrimaryButton("Adicionar manualmente", onClick = { navigator.to(Routes.newCard(node.id)) }, icon = R.drawable.ic_plus)
-                                SecondaryButton("Gerar com IA", onClick = { navigator.to(Routes.aiCreate(node.id)) }, icon = R.drawable.ic_sparkle, modifier = Modifier.fillMaxWidth())
+                                PrimaryButton("Adicionar card", onClick = { navigator.to(Routes.newCard(node.id)) }, icon = R.drawable.ic_plus)
+                                SecondaryButton("Gerar com IA", onClick = { navigator.to(Routes.aiCreate(node.id)) }, icon = R.drawable.ic_sparkle)
                             }
                         }
                     } else {
@@ -256,9 +254,8 @@ fun DeckScreen(navigator: AppNavigator, deckId: String) {
             title = node.deck.name,
             onDismiss = { headerMenu = false },
             actions = listOf(
+                SheetAction("Renomear", { dialog = DeckDialog.Rename(node.id, node.deck.name) }, icon = R.drawable.ic_edit),
                 SheetAction("Criar subdeck", { dialog = DeckDialog.Create(node.id, node.deck.name) }, icon = R.drawable.ic_folder),
-                SheetAction("Gerar cards com IA", { navigator.to(Routes.aiCreate(node.id)) }, icon = R.drawable.ic_sparkle),
-                SheetAction("Adicionar card manualmente", { navigator.to(Routes.newCard(node.id)) }, icon = R.drawable.ic_plus),
                 SheetAction("Reorganizar cards", { viewModel.startReorder(state.cards) }, icon = R.drawable.ic_swap_vert, hint = if (state.cards.size < 2) "Precisa de pelo menos 2 cards" else null),
                 SheetAction("Opções de estudo", { navigator.to(Routes.settingsSection(SettingsSection.Study)) }, icon = R.drawable.ic_settings, hint = "Os limites diários valem para todos os decks"),
                 SheetAction("Estatísticas do deck", { navigator.to(Routes.stats(node.id)) }, icon = R.drawable.ic_bar_chart),
@@ -356,74 +353,93 @@ private fun Summary(
     onEditLesson: () -> Unit,
     onLessonAi: () -> Unit,
     onStudy: () -> Unit,
-    onAddCard: () -> Unit,
-    onAi: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val palette = okloPalette
     val counts = node.aggregate
-    SectionCard(modifier) {
-        Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-            if (parentPath != null) Eyebrow(parentPath)
-            Text(plural(counts.total, "card", "cards") + if (node.hasChildren) " no total (com subdecks)" else "", style = MaterialTheme.typography.titleMedium)
+    var lessonMenu by remember { mutableStateOf(false) }
+    val canStudy = counts.pending + counts.newCount > 0
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+        Row(Modifier.fillMaxWidth().padding(vertical = Spacing.sm), horizontalArrangement = Arrangement.SpaceEvenly) {
+            OverviewCount(counts.newCount, "Novos", palette.newCount)
+            OverviewCount(counts.learningDue, "Aprendendo", palette.learnCount)
+            OverviewCount(counts.reviewDue, "Revisar", palette.reviewCount)
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), modifier = Modifier.fillMaxWidth()) {
-            Metric(counts.reviewDue.toString(), "Revisar hoje", Modifier.weight(1f), dot = MaterialTheme.colorScheme.primary)
-            Metric(counts.learningDue.toString(), "Aprendizado", Modifier.weight(1f), dot = palette.warning)
-            Metric(counts.newCount.toString(), "Novos", Modifier.weight(1f), dot = palette.success)
+        PrimaryButton("Estudar", onClick = onStudy, enabled = canStudy, modifier = Modifier.fillMaxWidth())
+        val hints = buildList {
+            if (!canStudy) add(if (counts.total == 0) "Adicione cards para começar." else "Nada pendente hoje.")
+            add(plural(counts.total, "card", "cards") + if (node.hasChildren) " com subdecks" else "")
+            if (counts.suspended > 0) add(plural(counts.suspended, "suspenso", "suspensos"))
+            if (parentPath != null) add("em $parentPath")
         }
-        if (counts.suspended > 0) {
-            Text(plural(counts.suspended, "card suspenso", "cards suspensos") + " fora dos estudos.", style = MaterialTheme.typography.bodySmall, color = palette.muted)
-        }
-        if (lessonTitle != null) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.sm), modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                    Eyebrow("Aula")
-                    Text(lessonTitle, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                }
-                SecondaryButton("Ver aula", onClick = onLesson)
-            }
-        }
-        when (lessonProgress) {
-            LessonProgress.Generating -> InlineProgress("Gerando aula…", Modifier.fillMaxWidth())
-            else -> {
-                (lessonProgress as? LessonProgress.Failed)?.let {
-                    Notice(it.message, tone = NoticeTone.Error)
-                    QuietButton("Dispensar", onClick = onDismissLessonFailure)
-                }
-                SecondaryButton(
-                    if (lessonTitle != null) "Editar aula" else "Escrever aula",
-                    onClick = onEditLesson,
-                    icon = R.drawable.ic_edit,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                SecondaryButton(
-                    when {
-                        lessonProgress is LessonProgress.Failed -> "Tentar de novo"
-                        lessonTitle != null -> "Substituir aula com IA"
-                        else -> "Gerar aula com IA"
-                    },
-                    onClick = onLessonAi,
-                    icon = R.drawable.ic_sparkle,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
-        val canStudy = counts.pending + counts.newCount > 0
-        Column(Modifier.padding(top = Spacing.xs), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-            PrimaryButton("Estudar este deck", onClick = onStudy, enabled = canStudy, icon = R.drawable.ic_school)
-            if (!canStudy) {
+        Text(
+            hints.joinToString(" · "),
+            style = MaterialTheme.typography.bodySmall,
+            color = palette.muted,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Hairline()
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clickable(role = Role.Button, onClick = if (lessonTitle != null) onLesson else onEditLesson),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f).padding(vertical = Spacing.xs)) {
+                Text("Aula", style = MaterialTheme.typography.titleSmall)
                 Text(
-                    if (counts.total == 0) "Adicione cards para começar a estudar." else "Nada pendente neste deck hoje.",
+                    when {
+                        lessonProgress == LessonProgress.Generating -> "Gerando aula…"
+                        lessonTitle != null -> lessonTitle
+                        else -> "Nenhuma aula. Toque para escrever."
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = palette.muted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), modifier = Modifier.fillMaxWidth()) {
-                SecondaryButton("Adicionar card", onClick = onAddCard, icon = R.drawable.ic_plus, modifier = Modifier.weight(1f))
-                SecondaryButton("Gerar com IA", onClick = onAi, icon = R.drawable.ic_sparkle, modifier = Modifier.weight(1f))
+            if (lessonProgress == LessonProgress.Generating) {
+                InlineProgress("")
+            } else {
+                IconAction(R.drawable.ic_more, "Opções da aula", { lessonMenu = true })
             }
         }
+        (lessonProgress as? LessonProgress.Failed)?.let {
+            Notice(it.message, tone = NoticeTone.Error, action = { QuietButton("Dispensar", onClick = onDismissLessonFailure) })
+        }
+        Hairline()
+    }
+
+    if (lessonMenu) {
+        ActionSheet(
+            title = "Aula",
+            onDismiss = { lessonMenu = false },
+            actions = buildList {
+                if (lessonTitle != null) add(SheetAction("Ver aula", onLesson, icon = R.drawable.ic_visibility))
+                add(SheetAction(if (lessonTitle != null) "Editar aula" else "Escrever aula", onEditLesson, icon = R.drawable.ic_edit))
+                add(
+                    SheetAction(
+                        when {
+                            lessonProgress is LessonProgress.Failed -> "Tentar gerar de novo"
+                            lessonTitle != null -> "Substituir com IA"
+                            else -> "Gerar com IA"
+                        },
+                        onLessonAi,
+                        icon = R.drawable.ic_sparkle,
+                    ),
+                )
+            },
+        )
+    }
+}
+
+@Composable
+private fun OverviewCount(value: Int, label: String, color: androidx.compose.ui.graphics.Color) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value.toString(), style = MaterialTheme.typography.headlineMedium, color = if (value > 0) color else okloPalette.faint)
+        Text(label, style = MaterialTheme.typography.bodySmall, color = okloPalette.muted)
     }
 }
 
@@ -514,19 +530,21 @@ private fun CardPreviewSheet(
                     buildString {
                         append("${card.state.label} · ${plural(card.reps, "revisão", "revisões")} · ${plural(card.lapses, "lapso", "lapsos")}")
                         card.dueAt?.let { append("\nPróxima: ${shortDateTime(it)}") }
+                        if (card.intervalDays > 0) append("\nIntervalo: ${plural(card.intervalDays, "dia", "dias")}")
+                        card.easeFactor?.let { append(" · Facilidade: ${it / 10}%") }
                         card.stability?.let { append("\nEstabilidade: ${IntervalFormat.short((it * 86_400_000).toLong())}") }
-                        card.difficulty?.let { append(" · Dificuldade: ${"%.1f".format(it)} de 10") }
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = okloPalette.muted,
                 )
             }
             Spacer(Modifier.height(Spacing.xs))
-            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), modifier = Modifier.fillMaxWidth()) {
-                SecondaryButton("Editar", onClick = onEdit, icon = R.drawable.ic_edit, modifier = Modifier.weight(1f))
-                SecondaryButton(if (card.suspended) "Reativar" else "Suspender", onClick = onToggleSuspend, modifier = Modifier.weight(1f))
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs), verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                QuietButton("Excluir", onClick = onDelete, destructive = true)
+                Spacer(Modifier.weight(1f))
+                QuietButton(if (card.suspended) "Reativar" else "Suspender", onClick = onToggleSuspend)
+                PrimaryButton("Editar", onClick = onEdit)
             }
-            SecondaryButton("Excluir card", onClick = onDelete, destructive = true, icon = R.drawable.ic_trash, modifier = Modifier.fillMaxWidth())
         }
     }
 }

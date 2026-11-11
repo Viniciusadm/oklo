@@ -10,14 +10,14 @@ object Spacing {
     val lg = 16.dp
     val xl = 24.dp
     val xxl = 32.dp
-    val screenH = 20.dp
-    val screenBottom = 32.dp
+    val screenH = 16.dp
+    val screenBottom = 24.dp
 }
 
 object Radii {
-    val control = RoundedCornerShape(12.dp)
-    val surface = RoundedCornerShape(18.dp)
+    val control = RoundedCornerShape(10.dp)
+    val surface = RoundedCornerShape(12.dp)
     val pill = RoundedCornerShape(percent = 50)
     val small = RoundedCornerShape(6.dp)
-    val sheet = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+    val sheet = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
 }

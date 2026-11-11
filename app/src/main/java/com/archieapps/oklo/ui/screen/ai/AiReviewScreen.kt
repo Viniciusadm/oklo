@@ -30,12 +30,12 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -212,10 +212,11 @@ fun AiReviewScreen(navigator: AppNavigator) {
             error?.let { Notice(it, tone = NoticeTone.Error) }
             GenerateLessonOption(lessonOption, onChange = viewModel::setGenerateLesson)
             PrimaryButton(
-                if (selected == 0) "Selecione cards para adicionar" else "Adicionar ${plural(selected, "card", "cards")} ao deck",
+                if (selected == 0) "Selecione cards" else "Adicionar ($selected)",
                 onClick = viewModel::addSelected,
                 enabled = selected > 0,
                 loading = saving,
+                modifier = Modifier.fillMaxWidth(),
             )
         }
     }
