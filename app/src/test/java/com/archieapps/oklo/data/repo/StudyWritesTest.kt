@@ -1,9 +1,9 @@
 package com.archieapps.oklo.data.repo
 
-import com.archieapps.oklo.core.fsrs.FsrsParameters
-import com.archieapps.oklo.core.fsrs.FsrsScheduler
 import com.archieapps.oklo.core.fsrs.Rating
 import com.archieapps.oklo.core.net.DeckDto
+import com.archieapps.oklo.core.sched.Sm2Config
+import com.archieapps.oklo.core.sched.Sm2Scheduler
 import com.archieapps.oklo.data.db.CardEntity
 import com.archieapps.oklo.data.db.toDto
 import com.archieapps.oklo.data.sync.InMemorySyncStore
@@ -26,7 +26,7 @@ class StudyWritesTest {
     fun `a study session writes cards and reviews but never dirties the deck`() = runTest {
         val store = InMemorySyncStore()
         store.putDeck(deck, dirty = false)
-        val scheduler = FsrsScheduler(FsrsParameters(enableFuzz = false))
+        val scheduler = Sm2Scheduler(Sm2Config(enableFuzz = false))
         var now = 1_791_460_800_000L
         listOf("c1", "c2").forEach { store.putCard(card(it).toDto(), dirty = false) }
         listOf("c1" to Rating.Good, "c2" to Rating.Again, "c1" to Rating.Good, "c2" to Rating.Easy).forEachIndexed { index, (id, rating) ->
@@ -34,6 +34,7 @@ class StudyWritesTest {
             val entity = card(id).copy(
                 state = current.state, step = current.step, stability = current.stability, difficulty = current.difficulty,
                 dueAt = current.dueAt, lastReviewAt = current.lastReviewAt, reps = current.reps, updatedAt = current.updatedAt,
+                easeFactor = current.easeFactor, intervalDays = current.intervalDays,
             )
             val write = StudyWrites.answer(entity, rating, scheduler, now, 4_000, null, "r$index")
             assertEquals("d1", write.card.deckId)

@@ -6,6 +6,7 @@ import com.archieapps.oklo.core.net.LessonDto
 import com.archieapps.oklo.core.net.OkloJson
 import com.archieapps.oklo.core.net.ReviewDto
 import com.archieapps.oklo.core.net.SettingsDto
+import com.archieapps.oklo.core.sched.SchedulerKind
 import com.archieapps.oklo.data.model.AiModel
 import com.archieapps.oklo.data.model.Card
 import com.archieapps.oklo.data.model.CardContent
@@ -64,6 +65,8 @@ fun CardEntity.toModel(): Card = Card(
     createdAt = createdAt,
     updatedAt = updatedAt,
     lessonTarget = lessonTarget,
+    easeFactor = easeFactor,
+    intervalDays = intervalDays,
 )
 
 fun CardEntity.toDto(): CardDto = CardDto(
@@ -89,6 +92,8 @@ fun CardEntity.toDto(): CardDto = CardDto(
     updatedAt = updatedAt,
     deletedAt = deletedAt,
     lessonTarget = lessonTarget,
+    easeFactor = easeFactor,
+    intervalDays = intervalDays,
 )
 
 fun CardDto.toEntity(dirty: Boolean): CardEntity = CardEntity(
@@ -115,6 +120,8 @@ fun CardDto.toEntity(dirty: Boolean): CardEntity = CardEntity(
     deletedAt = deletedAt,
     lessonTarget = lessonTarget,
     dirty = dirty,
+    easeFactor = easeFactor,
+    intervalDays = intervalDays,
 )
 
 fun LessonEntity.toModel(): Lesson =
@@ -147,6 +154,15 @@ fun SettingsEntity.toModel(): StudySettings = StudySettings(
     librarySort = LibrarySort.of(librarySort),
     aiModel = AiModel.of(aiModel),
     updatedAt = updatedAt,
+    scheduler = SchedulerKind.of(scheduler),
+    graduatingIntervalDays = graduatingIntervalDays,
+    easyIntervalDays = easyIntervalDays,
+    startingEase = startingEase,
+    easyBonus = easyBonus,
+    hardIntervalFactor = hardIntervalFactor,
+    intervalModifier = intervalModifier,
+    newIntervalFactor = newIntervalFactor,
+    minimumIntervalDays = minimumIntervalDays,
 )
 
 fun StudySettings.toEntity(dirty: Boolean): SettingsEntity = SettingsEntity(
@@ -162,6 +178,15 @@ fun StudySettings.toEntity(dirty: Boolean): SettingsEntity = SettingsEntity(
     aiModel = aiModel.wire,
     updatedAt = updatedAt,
     dirty = dirty,
+    scheduler = scheduler.wire,
+    graduatingIntervalDays = graduatingIntervalDays,
+    easyIntervalDays = easyIntervalDays,
+    startingEase = startingEase,
+    easyBonus = easyBonus,
+    hardIntervalFactor = hardIntervalFactor,
+    intervalModifier = intervalModifier,
+    newIntervalFactor = newIntervalFactor,
+    minimumIntervalDays = minimumIntervalDays,
 )
 
 fun SettingsEntity.toDto(): SettingsDto = SettingsDto(
@@ -176,6 +201,15 @@ fun SettingsEntity.toDto(): SettingsDto = SettingsDto(
     librarySort = librarySort,
     aiModel = aiModel,
     updatedAt = updatedAt,
+    scheduler = scheduler,
+    graduatingIntervalDays = graduatingIntervalDays,
+    easyIntervalDays = easyIntervalDays,
+    startingEase = startingEase,
+    easyBonus = easyBonus,
+    hardIntervalFactor = hardIntervalFactor,
+    intervalModifier = intervalModifier,
+    newIntervalFactor = newIntervalFactor,
+    minimumIntervalDays = minimumIntervalDays,
 )
 
 fun SettingsDto.toEntity(dirty: Boolean): SettingsEntity = SettingsEntity(
@@ -191,6 +225,15 @@ fun SettingsDto.toEntity(dirty: Boolean): SettingsEntity = SettingsEntity(
     aiModel = aiModel,
     updatedAt = updatedAt,
     dirty = dirty,
+    scheduler = scheduler,
+    graduatingIntervalDays = graduatingIntervalDays,
+    easyIntervalDays = easyIntervalDays,
+    startingEase = startingEase,
+    easyBonus = easyBonus,
+    hardIntervalFactor = hardIntervalFactor,
+    intervalModifier = intervalModifier,
+    newIntervalFactor = newIntervalFactor,
+    minimumIntervalDays = minimumIntervalDays,
 )
 
 fun CardStatRow.toModel(): CardStat = CardStat(id, deckId, state, dueAt, suspended, createdAt)

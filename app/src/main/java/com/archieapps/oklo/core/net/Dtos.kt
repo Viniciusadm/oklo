@@ -49,6 +49,8 @@ data class CardDto(
     val updatedAt: Long,
     val deletedAt: Long? = null,
     val lessonTarget: String? = null,
+    val easeFactor: Int? = null,
+    val intervalDays: Int = 0,
 )
 
 @Serializable
@@ -94,6 +96,15 @@ data class SettingsDto(
     val librarySort: String = "name",
     val aiModel: String = "flash",
     val updatedAt: Long,
+    val scheduler: String = "sm2",
+    val graduatingIntervalDays: Int = 1,
+    val easyIntervalDays: Int = 4,
+    val startingEase: Double = 2.5,
+    val easyBonus: Double = 1.3,
+    val hardIntervalFactor: Double = 1.2,
+    val intervalModifier: Double = 1.0,
+    val newIntervalFactor: Double = 0.0,
+    val minimumIntervalDays: Int = 1,
 )
 
 @Serializable

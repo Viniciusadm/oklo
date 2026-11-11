@@ -3,8 +3,8 @@ package com.archieapps.oklo.ui.screen.study
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.archieapps.oklo.Container
-import com.archieapps.oklo.core.fsrs.FsrsScheduler
 import com.archieapps.oklo.core.fsrs.Rating
+import com.archieapps.oklo.core.sched.CardScheduler
 import com.archieapps.oklo.core.time.LocalDay
 import com.archieapps.oklo.data.model.Card
 import com.archieapps.oklo.data.model.CardType
@@ -70,7 +70,7 @@ class StudyViewModel(private val container: Container, private val deckId: Strin
     val ui: StateFlow<StudyUi> = _ui.asStateFlow()
 
     private var session: StudySession? = null
-    private var scheduler: FsrsScheduler? = null
+    private var scheduler: CardScheduler? = null
     private var deckName: String? = null
     private var shownAt: Long = 0
     private var totals = SessionTotals()

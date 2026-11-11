@@ -41,7 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.archieapps.oklo.BuildConfig
 import com.archieapps.oklo.R
-import com.archieapps.oklo.core.fsrs.FsrsParameters
+import com.archieapps.oklo.core.sched.SchedulerKind
 import com.archieapps.oklo.data.model.AiModel
 import com.archieapps.oklo.data.model.LibrarySort
 import com.archieapps.oklo.data.model.StudySettings
@@ -69,15 +69,13 @@ import com.archieapps.oklo.ui.components.plural
 import com.archieapps.oklo.ui.nav.AppNavigator
 import com.archieapps.oklo.ui.nav.Routes
 import com.archieapps.oklo.ui.nav.appViewModel
-import com.archieapps.oklo.ui.theme.NumeralStyle
 import com.archieapps.oklo.ui.theme.Spacing
 import com.archieapps.oklo.ui.theme.okloPalette
-import java.util.Locale
 
 enum class SettingsSection(val key: String, val title: String, val description: String) {
     Appearance("appearance", "Aparência", "Tema claro, escuro ou automático; tamanho do texto."),
     Study("study", "Estudo", "Limites de cards novos e revisões por dia; comportamento da sessão."),
-    Algorithm("algorithm", "Algoritmo", "FSRS-5: retenção desejada, passos e intervalo máximo."),
+    Algorithm("algorithm", "Algoritmo", "SM-2 do Anki ou FSRS, passos e intervalos."),
     Ai("ai", "Inteligência artificial", "Modelo DeepSeek, parâmetros de geração e estado da conexão."),
     Library("library", "Biblioteca", "Ordenação padrão e comportamento dos decks."),
     Account("account", "Conta e backup", "Entrar, sincronizar agora e restaurar do servidor."),
@@ -255,7 +253,7 @@ private fun StudySection(viewModel: SettingsViewModel, onDirty: (Boolean) -> Uni
     SectionCard {
         Eyebrow("Limites diários")
         NumberField("Cards novos por dia", newPerDay, { newPerDay = it }, newError, "Quantos cards nunca vistos entram por dia.")
-        NumberField("Revisões por dia", reviewsPerDay, { reviewsPerDay = it }, reviewError, "Teto de cards em revisão por dia.")
+        NumberField("Revisões por dia", reviewsPerDay, { reviewsPerDay = it }, reviewError, "Teto diário de revisões. Cards novos também contam, como no Anki.")
         PrimaryButton("Salvar", onClick = {
             viewModel.update { it.copy(newPerDay = newValue!!, reviewsPerDay = reviewValue!!) }
         }, enabled = dirty && newError == null && reviewError == null)
@@ -263,7 +261,7 @@ private fun StudySection(viewModel: SettingsViewModel, onDirty: (Boolean) -> Uni
     SectionCard {
         Eyebrow("Comportamento da sessão")
         Text(
-            "• O dia de estudo começa à meia-noite no fuso do aparelho.\n" +
+            "• O dia de estudo vira às 4h da manhã, como no Anki.\n" +
                 "• Estudar um deck inclui os subdecks dele.\n" +
                 "• Cards em aprendizado voltam na mesma sessão quando vencem em até 20 minutos.\n" +
                 "• Os limites diários valem para todos os decks juntos.\n" +
@@ -280,49 +278,101 @@ private fun parseSteps(text: String): List<Int>? {
     return values
 }
 
+private fun parseDecimal(text: String): Double? = text.trim().replace(',', '.').toDoubleOrNull()
+
+private fun decimalText(value: Double): String = String.format(PtBr, "%.2f", value)
+
+@Composable
+private fun DecimalField(label: String, value: String, onChange: (String) -> Unit, error: String?, supporting: String? = null) {
+    OkloTextField(
+        value = value,
+        onValueChange = { onChange(it.filter { ch -> ch.isDigit() || ch == ',' || ch == '.' }) },
+        label = label,
+        singleLine = true,
+        error = error,
+        supporting = supporting,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
 @Composable
 private fun AlgorithmSection(viewModel: SettingsViewModel, onDirty: (Boolean) -> Unit) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val current = settings ?: return Loading()
+    var kind by rememberSaveable(current.scheduler) { mutableStateOf(current.scheduler) }
     var retention by rememberSaveable(current.desiredRetention) { mutableFloatStateOf(current.desiredRetention.toFloat()) }
     var learning by rememberSaveable(current.learningStepsMinutes) { mutableStateOf(current.learningStepsMinutes.joinToString(", ")) }
     var relearning by rememberSaveable(current.relearningStepsMinutes) { mutableStateOf(current.relearningStepsMinutes.joinToString(", ")) }
     var maxInterval by rememberSaveable(current.maximumIntervalDays) { mutableStateOf(current.maximumIntervalDays.toString()) }
+    var graduating by rememberSaveable(current.graduatingIntervalDays) { mutableStateOf(current.graduatingIntervalDays.toString()) }
+    var easyInterval by rememberSaveable(current.easyIntervalDays) { mutableStateOf(current.easyIntervalDays.toString()) }
+    var minimumInterval by rememberSaveable(current.minimumIntervalDays) { mutableStateOf(current.minimumIntervalDays.toString()) }
+    var startingEase by rememberSaveable(current.startingEase) { mutableStateOf(decimalText(current.startingEase)) }
+    var easyBonus by rememberSaveable(current.easyBonus) { mutableStateOf(decimalText(current.easyBonus)) }
+    var hardFactor by rememberSaveable(current.hardIntervalFactor) { mutableStateOf(decimalText(current.hardIntervalFactor)) }
+    var modifierText by rememberSaveable(current.intervalModifier) { mutableStateOf(decimalText(current.intervalModifier)) }
+    var newFactor by rememberSaveable(current.newIntervalFactor) { mutableStateOf(decimalText(current.newIntervalFactor)) }
     var fuzz by rememberSaveable(current.enableFuzz) { mutableStateOf(current.enableFuzz) }
+
     val learningSteps = parseSteps(learning)
     val relearningSteps = parseSteps(relearning)
-    val maxValue = maxInterval.trim().toIntOrNull()
+    val maxValue = maxInterval.trim().toIntOrNull()?.takeIf { it in 1..36500 }
+    val graduatingValue = graduating.trim().toIntOrNull()?.takeIf { it in 1..365 }
+    val easyValue = easyInterval.trim().toIntOrNull()?.takeIf { it in 1..365 }
+    val minimumValue = minimumInterval.trim().toIntOrNull()?.takeIf { it in 1..365 }
+    val easeValue = parseDecimal(startingEase)?.takeIf { it in 1.31..5.0 }
+    val bonusValue = parseDecimal(easyBonus)?.takeIf { it in 1.0..5.0 }
+    val hardValue = parseDecimal(hardFactor)?.takeIf { it in 0.5..1.3 }
+    val modifierValue = parseDecimal(modifierText)?.takeIf { it in 0.5..2.0 }
+    val newFactorValue = parseDecimal(newFactor)?.takeIf { it in 0.0..1.0 }
     val retentionRounded = Math.round(retention * 100) / 100.0
-    val maxError = if (maxValue == null || maxValue !in 1..36500) "Use de 1 a 36500 dias." else null
-    val stepsHint = "Minutos separados por vírgula (até 10 passos, de 1 a 1440). Pode ficar vazio."
-    val dirty = retentionRounded != current.desiredRetention ||
-        learning != current.learningStepsMinutes.joinToString(", ") ||
-        relearning != current.relearningStepsMinutes.joinToString(", ") ||
-        maxInterval != current.maximumIntervalDays.toString() ||
-        fuzz != current.enableFuzz
+    val stepsHint = "Minutos separados por vírgula (até 10, de 1 a 1440)."
+    val sm2Valid = graduatingValue != null && easyValue != null && minimumValue != null && easeValue != null &&
+        bonusValue != null && hardValue != null && modifierValue != null && newFactorValue != null
+    val valid = learningSteps != null && relearningSteps != null && maxValue != null && (kind == SchedulerKind.Fsrs || sm2Valid)
+    val candidate = if (!valid) null else current.copy(
+        scheduler = kind,
+        desiredRetention = retentionRounded,
+        learningStepsMinutes = learningSteps!!,
+        relearningStepsMinutes = relearningSteps!!,
+        maximumIntervalDays = maxValue!!,
+        enableFuzz = fuzz,
+        graduatingIntervalDays = graduatingValue ?: current.graduatingIntervalDays,
+        easyIntervalDays = easyValue ?: current.easyIntervalDays,
+        minimumIntervalDays = minimumValue ?: current.minimumIntervalDays,
+        startingEase = easeValue ?: current.startingEase,
+        easyBonus = bonusValue ?: current.easyBonus,
+        hardIntervalFactor = hardValue ?: current.hardIntervalFactor,
+        intervalModifier = modifierValue ?: current.intervalModifier,
+        newIntervalFactor = newFactorValue ?: current.newIntervalFactor,
+    )
+    val dirty = candidate == null || candidate != current
     LaunchedEffect(dirty) { onDirty(dirty) }
 
-    Notice(
-        "O agendamento usa o FSRS-5 com os 19 pesos padrão, numa porta do py-fsrs 4.x validada contra a biblioteca original. Não é o algoritmo SM-2 do Anki.",
-        tone = NoticeTone.Info,
-        title = "Algoritmo FSRS-5",
-    )
     SectionCard {
-        Eyebrow("Retenção desejada")
-        Text(
-            String.format(PtBr, "%.0f%%", retentionRounded * 100),
-            style = NumeralStyle,
-        )
-        OkloSlider(value = retention, onValueChange = { retention = it }, valueRange = 0.70f..0.99f, steps = 28)
-        Text(
-            "Probabilidade de lembrar no dia da revisão. Mais alta = revisões mais frequentes.",
-            style = MaterialTheme.typography.bodySmall,
-            color = okloPalette.muted,
-        )
+        Eyebrow("Algoritmo")
+        Column(Modifier.selectableGroup()) {
+            SchedulerKind.entries.forEach { option ->
+                RadioRow(
+                    label = option.label,
+                    selected = kind == option,
+                    onClick = { kind = option },
+                    supporting = when (option) {
+                        SchedulerKind.Sm2 -> "Igual ao Anki: fator de facilidade e intervalos fixos."
+                        SchedulerKind.Fsrs -> "Modelo de memória FSRS-5 com retenção desejada."
+                    },
+                    horizontalPadding = 0.dp,
+                )
+            }
+        }
+    }
+    SectionCard {
+        Eyebrow("Passos")
         OkloTextField(
             value = learning,
             onValueChange = { learning = it },
-            label = "Passos de aprendizado (min)",
+            label = "Aprendizado (min)",
             error = if (learningSteps == null) "Valor inválido. $stepsHint" else null,
             supporting = stepsHint,
             singleLine = true,
@@ -331,13 +381,39 @@ private fun AlgorithmSection(viewModel: SettingsViewModel, onDirty: (Boolean) ->
         OkloTextField(
             value = relearning,
             onValueChange = { relearning = it },
-            label = "Passos de reaprendizado (min)",
+            label = "Reaprendizado (min)",
             error = if (relearningSteps == null) "Valor inválido. $stepsHint" else null,
-            supporting = stepsHint,
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
-        NumberField("Intervalo máximo (dias)", maxInterval, { maxInterval = it.filter(Char::isDigit) }, maxError)
+    }
+    if (kind == SchedulerKind.Sm2) {
+        SectionCard {
+            Eyebrow("Intervalos")
+            NumberField("Intervalo de graduação (dias)", graduating, { graduating = it.filter(Char::isDigit) }, if (graduatingValue == null) "De 1 a 365." else null)
+            NumberField("Intervalo do Fácil (dias)", easyInterval, { easyInterval = it.filter(Char::isDigit) }, if (easyValue == null) "De 1 a 365." else null)
+            NumberField("Intervalo mínimo após lapso (dias)", minimumInterval, { minimumInterval = it.filter(Char::isDigit) }, if (minimumValue == null) "De 1 a 365." else null)
+            DecimalField("Facilidade inicial", startingEase, { startingEase = it }, if (easeValue == null) "De 1,31 a 5,00." else null, "2,50 = 250%, como no Anki.")
+            DecimalField("Bônus do Fácil", easyBonus, { easyBonus = it }, if (bonusValue == null) "De 1,00 a 5,00." else null)
+            DecimalField("Multiplicador do Difícil", hardFactor, { hardFactor = it }, if (hardValue == null) "De 0,50 a 1,30." else null)
+            DecimalField("Modificador de intervalo", modifierText, { modifierText = it }, if (modifierValue == null) "De 0,50 a 2,00." else null)
+            DecimalField("Novo intervalo após lapso", newFactor, { newFactor = it }, if (newFactorValue == null) "De 0,00 a 1,00." else null)
+        }
+    } else {
+        SectionCard {
+            Eyebrow("Retenção desejada")
+            Text(String.format(PtBr, "%.0f%%", retentionRounded * 100), style = MaterialTheme.typography.titleLarge)
+            OkloSlider(value = retention, onValueChange = { retention = it }, valueRange = 0.70f..0.99f, steps = 28)
+            Text(
+                "Probabilidade de lembrar no dia da revisão. Mais alta = revisões mais frequentes.",
+                style = MaterialTheme.typography.bodySmall,
+                color = okloPalette.muted,
+            )
+        }
+    }
+    SectionCard {
+        Eyebrow("Geral")
+        NumberField("Intervalo máximo (dias)", maxInterval, { maxInterval = it.filter(Char::isDigit) }, if (maxValue == null) "De 1 a 36500." else null)
         ToggleRow(
             label = "Variação aleatória (fuzz)",
             checked = fuzz,
@@ -345,31 +421,14 @@ private fun AlgorithmSection(viewModel: SettingsViewModel, onDirty: (Boolean) ->
             supporting = "Espalha um pouco as datas para não acumular revisões no mesmo dia.",
             horizontalPadding = 0.dp,
         )
-        PrimaryButton(
-            "Salvar",
-            onClick = {
-                viewModel.update {
-                    it.copy(
-                        desiredRetention = retentionRounded,
-                        learningStepsMinutes = learningSteps!!,
-                        relearningStepsMinutes = relearningSteps!!,
-                        maximumIntervalDays = maxValue!!,
-                        enableFuzz = fuzz,
-                    )
-                }
-            },
-            enabled = dirty && learningSteps != null && relearningSteps != null && maxError == null,
-        )
-        Text("As mudanças valem para as próximas avaliações; cards já agendados mantêm a data atual.", style = MaterialTheme.typography.bodySmall, color = okloPalette.muted)
     }
-    SectionCard {
-        Eyebrow("Pesos do modelo (somente leitura)")
-        Text(
-            FsrsParameters.DEFAULT_WEIGHTS.mapIndexed { index, w -> "w$index = ${String.format(Locale.ROOT, "%.4f", w)}" }.joinToString("\n"),
-            style = MaterialTheme.typography.bodySmall,
-        )
-        Text("A otimização dos pesos a partir do seu histórico não está implementada.", style = MaterialTheme.typography.bodySmall, color = okloPalette.muted)
-    }
+    PrimaryButton(
+        "Salvar",
+        onClick = { candidate?.let { next -> viewModel.update { next.copy(updatedAt = it.updatedAt) } } },
+        enabled = dirty && candidate != null,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    Text("As mudanças valem para as próximas avaliações.", style = MaterialTheme.typography.bodySmall, color = okloPalette.muted)
 }
 
 @Composable

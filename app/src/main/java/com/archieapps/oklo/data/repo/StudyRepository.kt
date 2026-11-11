@@ -1,11 +1,15 @@
 package com.archieapps.oklo.data.repo
 
 import androidx.room.withTransaction
-import com.archieapps.oklo.core.fsrs.FsrsCard
 import com.archieapps.oklo.core.fsrs.FsrsParameters
-import com.archieapps.oklo.core.fsrs.FsrsScheduler
-import com.archieapps.oklo.core.fsrs.FsrsState
 import com.archieapps.oklo.core.fsrs.Rating
+import com.archieapps.oklo.core.sched.CardScheduler
+import com.archieapps.oklo.core.sched.FsrsCardScheduler
+import com.archieapps.oklo.core.sched.SchedulerKind
+import com.archieapps.oklo.core.sched.SchedulingCard
+import com.archieapps.oklo.core.sched.SchedulingOutcome
+import com.archieapps.oklo.core.sched.Sm2Config
+import com.archieapps.oklo.core.sched.Sm2Scheduler
 import com.archieapps.oklo.core.time.LocalDay
 import com.archieapps.oklo.data.db.CardEntity
 import com.archieapps.oklo.data.db.OkloDatabase
@@ -24,27 +28,52 @@ import com.archieapps.oklo.domain.StudyPlanner
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-object FsrsMapping {
-    fun toFsrs(card: Card, now: Long): FsrsCard = when (card.state) {
-        CardState.New -> FsrsCard(FsrsState.Learning, 0, null, null, card.dueAt ?: now, null)
-        CardState.Learning -> FsrsCard(FsrsState.Learning, card.step ?: 0, card.stability, card.difficulty, card.dueAt ?: now, card.lastReviewAt)
-        CardState.Review -> FsrsCard(FsrsState.Review, null, card.stability, card.difficulty, card.dueAt ?: now, card.lastReviewAt)
-        CardState.Relearning -> FsrsCard(FsrsState.Relearning, card.step ?: 0, card.stability, card.difficulty, card.dueAt ?: now, card.lastReviewAt)
+object Schedulers {
+    fun of(settings: StudySettings): CardScheduler = when (settings.scheduler) {
+        SchedulerKind.Sm2 -> Sm2Scheduler(
+            Sm2Config(
+                learningStepsMinutes = settings.learningStepsMinutes,
+                relearningStepsMinutes = settings.relearningStepsMinutes,
+                graduatingIntervalDays = settings.graduatingIntervalDays,
+                easyIntervalDays = settings.easyIntervalDays,
+                startingEase = settings.startingEase,
+                easyBonus = settings.easyBonus,
+                intervalModifier = settings.intervalModifier,
+                hardIntervalFactor = settings.hardIntervalFactor,
+                newIntervalFactor = settings.newIntervalFactor,
+                minimumIntervalDays = settings.minimumIntervalDays,
+                maximumIntervalDays = settings.maximumIntervalDays,
+                enableFuzz = settings.enableFuzz,
+            ),
+        )
+        SchedulerKind.Fsrs -> FsrsCardScheduler(
+            FsrsParameters(
+                desiredRetention = settings.desiredRetention,
+                learningStepsMinutes = settings.learningStepsMinutes,
+                relearningStepsMinutes = settings.relearningStepsMinutes,
+                maximumIntervalDays = settings.maximumIntervalDays,
+                enableFuzz = settings.enableFuzz,
+            ),
+        )
     }
 
-    fun stateOf(state: FsrsState): CardState = when (state) {
-        FsrsState.Learning -> CardState.Learning
-        FsrsState.Review -> CardState.Review
-        FsrsState.Relearning -> CardState.Relearning
-    }
-
-    fun parameters(settings: StudySettings): FsrsParameters = FsrsParameters(
-        desiredRetention = settings.desiredRetention,
-        learningStepsMinutes = settings.learningStepsMinutes,
-        relearningStepsMinutes = settings.relearningStepsMinutes,
-        maximumIntervalDays = settings.maximumIntervalDays,
-        enableFuzz = settings.enableFuzz,
+    fun input(card: Card): SchedulingCard = SchedulingCard(
+        id = card.id,
+        state = card.state,
+        step = card.step,
+        stability = card.stability,
+        difficulty = card.difficulty,
+        easeFactor = card.easeFactor,
+        intervalDays = card.intervalDays,
+        dueAt = card.dueAt,
+        lastReviewAt = card.lastReviewAt,
+        reps = card.reps,
     )
+
+    fun displayInterval(outcome: SchedulingOutcome, now: Long): Long =
+        if (outcome.state == CardState.Review) outcome.intervalDays * DAY_MS else (outcome.dueAt - now).coerceAtLeast(0)
+
+    private const val DAY_MS = 86_400_000L
 }
 
 data class AnswerWrite(
@@ -56,7 +85,7 @@ object StudyWrites {
     fun answer(
         entity: CardEntity,
         rating: Rating,
-        scheduler: FsrsScheduler,
+        scheduler: CardScheduler,
         clockNow: Long,
         durationMs: Long,
         answeredCorrect: Boolean?,
@@ -64,15 +93,17 @@ object StudyWrites {
     ): AnswerWrite {
         val card = entity.toModel()
         val now = maxOf(clockNow, card.lastReviewAt ?: 0L)
-        val next = scheduler.review(FsrsMapping.toFsrs(card, now), rating, now)
+        val next = scheduler.review(Schedulers.input(card), rating, now)
         val lapse = card.state == CardState.Review && rating == Rating.Again
         val updated = entity.copy(
-            state = FsrsMapping.stateOf(next.state).wire,
+            state = next.state.wire,
             step = next.step,
             stability = next.stability,
             difficulty = next.difficulty,
-            dueAt = next.due,
-            lastReviewAt = next.lastReview,
+            easeFactor = next.easeFactor,
+            intervalDays = next.intervalDays,
+            dueAt = next.dueAt,
+            lastReviewAt = now,
             reps = entity.reps + 1,
             lapses = entity.lapses + if (lapse) 1 else 0,
             updatedAt = Stamp.next(entity.updatedAt, now),
@@ -85,7 +116,7 @@ object StudyWrites {
             stateBefore = card.state.wire,
             stabilityAfter = next.stability,
             difficultyAfter = next.difficulty,
-            scheduledSeconds = ((next.due - now) / 1000).coerceAtLeast(0),
+            scheduledSeconds = ((next.dueAt - now) / 1000).coerceAtLeast(0),
             durationMs = durationMs.coerceAtLeast(0),
             answeredCorrect = answeredCorrect,
             reviewedAt = now,
@@ -142,10 +173,10 @@ class StudyRepository(
 
     suspend fun card(id: String): Card? = db.cards().get(id)?.takeIf { it.deletedAt == null }?.toModel()
 
-    suspend fun scheduler(): FsrsScheduler = FsrsScheduler(FsrsMapping.parameters(settingsRepository.current()))
+    suspend fun scheduler(): CardScheduler = Schedulers.of(settingsRepository.current())
 
-    fun previewIntervals(scheduler: FsrsScheduler, card: Card, now: Long): Map<Rating, Long> =
-        scheduler.preview(FsrsMapping.toFsrs(card, now), now).mapValues { (_, next) -> next.due - now }
+    fun previewIntervals(scheduler: CardScheduler, card: Card, now: Long): Map<Rating, Long> =
+        scheduler.preview(Schedulers.input(card), now).mapValues { (_, next) -> Schedulers.displayInterval(next, now) }
 
     suspend fun answer(
         cardId: String,

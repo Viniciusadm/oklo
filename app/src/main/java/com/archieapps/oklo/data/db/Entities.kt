@@ -1,5 +1,6 @@
 package com.archieapps.oklo.data.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -42,6 +43,8 @@ data class CardEntity(
     val deletedAt: Long?,
     val lessonTarget: String?,
     val dirty: Boolean,
+    val easeFactor: Int? = null,
+    @ColumnInfo(defaultValue = "0") val intervalDays: Int = 0,
 )
 
 @Entity(
@@ -93,6 +96,15 @@ data class SettingsEntity(
     val aiModel: String,
     val updatedAt: Long,
     val dirty: Boolean,
+    @ColumnInfo(defaultValue = "sm2") val scheduler: String = "sm2",
+    @ColumnInfo(defaultValue = "1") val graduatingIntervalDays: Int = 1,
+    @ColumnInfo(defaultValue = "4") val easyIntervalDays: Int = 4,
+    @ColumnInfo(defaultValue = "2.5") val startingEase: Double = 2.5,
+    @ColumnInfo(defaultValue = "1.3") val easyBonus: Double = 1.3,
+    @ColumnInfo(defaultValue = "1.2") val hardIntervalFactor: Double = 1.2,
+    @ColumnInfo(defaultValue = "1.0") val intervalModifier: Double = 1.0,
+    @ColumnInfo(defaultValue = "0.0") val newIntervalFactor: Double = 0.0,
+    @ColumnInfo(defaultValue = "1") val minimumIntervalDays: Int = 1,
 )
 
 data class RowVersion(

@@ -20,7 +20,7 @@ class StudyQueueTest {
         QueueCard(id, state, due, position, 0)
 
     @Test
-    fun `daily limits subtract what was already done today`() {
+    fun `daily limits subtract what was already done today and new cards count toward the review limit`() {
         val cards = (1..10).map { card("n$it", CardState.New, position = it) } +
             (1..10).map { card("r$it", CardState.Review, due = now - it * minute) }
         val reviews = listOf(
@@ -32,13 +32,24 @@ class StudyQueueTest {
         )
         val progress = DailyProgress.from(reviews, window)
         assertEquals(2, progress.newIntroduced)
-        assertEquals(1, progress.reviewsDone)
-        val plan = StudyPlanner.plan(cards, now, window, DailyLimits(newPerDay = 5, reviewsPerDay = 4), progress)
-        assertEquals(listOf("n1", "n2", "n3"), plan.news.map { it.id })
-        assertEquals(3, plan.reviews.size)
+        assertEquals(3, progress.reviewsDone)
+        val plan = StudyPlanner.plan(cards, now, window, DailyLimits(newPerDay = 5, reviewsPerDay = 8), progress)
+        assertEquals(5, plan.reviews.size)
         assertEquals("r10", plan.reviews.first().id)
-        assertTrue(plan.newsCapped)
+        assertTrue(plan.news.isEmpty())
         assertTrue(plan.reviewsCapped)
+
+        val roomy = StudyPlanner.plan(cards, now, window, DailyLimits(newPerDay = 5, reviewsPerDay = 16), progress)
+        assertEquals(10, roomy.reviews.size)
+        assertEquals(listOf("n1", "n2", "n3"), roomy.news.map { it.id })
+        assertTrue(roomy.newsCapped)
+    }
+
+    @Test
+    fun `new cards are spread among reviews`() {
+        val mixed = StudySession.interleave((1..6).map { "r$it" }, listOf("n1", "n2"))
+        assertEquals(listOf("r1", "r2", "r3", "n1", "r4", "r5", "r6", "n2"), mixed)
+        assertEquals(listOf("n1"), StudySession.interleave(emptyList(), listOf("n1")))
     }
 
     @Test

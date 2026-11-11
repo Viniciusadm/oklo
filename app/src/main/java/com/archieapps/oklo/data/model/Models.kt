@@ -1,5 +1,6 @@
 package com.archieapps.oklo.data.model
 
+import com.archieapps.oklo.core.sched.SchedulerKind
 import kotlinx.serialization.Serializable
 
 enum class CardType(val wire: String, val label: String) {
@@ -128,6 +129,8 @@ data class Card(
     val createdAt: Long,
     val updatedAt: Long,
     val lessonTarget: String? = null,
+    val easeFactor: Int? = null,
+    val intervalDays: Int = 0,
 )
 
 data class Lesson(
@@ -188,4 +191,13 @@ data class StudySettings(
     val librarySort: LibrarySort = LibrarySort.Name,
     val aiModel: AiModel = AiModel.Flash,
     val updatedAt: Long = 0,
+    val scheduler: SchedulerKind = SchedulerKind.Sm2,
+    val graduatingIntervalDays: Int = 1,
+    val easyIntervalDays: Int = 4,
+    val startingEase: Double = 2.5,
+    val easyBonus: Double = 1.3,
+    val hardIntervalFactor: Double = 1.2,
+    val intervalModifier: Double = 1.0,
+    val newIntervalFactor: Double = 0.0,
+    val minimumIntervalDays: Int = 1,
 )

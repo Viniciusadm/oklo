@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 
 @Database(
     entities = [DeckEntity::class, CardEntity::class, ReviewEntity::class, LessonEntity::class, SettingsEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class OkloDatabase : RoomDatabase() {
@@ -23,6 +23,8 @@ abstract class OkloDatabase : RoomDatabase() {
 
     companion object {
         fun build(context: Context): OkloDatabase =
-            Room.databaseBuilder(context, OkloDatabase::class.java, "oklo.db").build()
+            Room.databaseBuilder(context, OkloDatabase::class.java, "oklo.db")
+                .addMigrations(Migrations.ONE_TO_TWO)
+                .build()
     }
 }

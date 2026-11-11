@@ -138,6 +138,8 @@ class DeckRepository(
                         lastReviewAt = null,
                         reps = 0,
                         lapses = 0,
+                        easeFactor = null,
+                        intervalDays = 0,
                         createdAt = now,
                         updatedAt = now,
                         deletedAt = null,

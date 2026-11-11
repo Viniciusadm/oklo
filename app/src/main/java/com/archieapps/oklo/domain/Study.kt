@@ -26,7 +26,11 @@ data class DailyProgress(
             val today = reviews.filter { it.reviewedAt in window }
             return DailyProgress(
                 newIntroduced = today.filter { it.stateBefore == CardState.New.wire }.map { it.cardId }.distinct().size,
-                reviewsDone = today.filter { it.stateBefore == CardState.Review.wire }.map { it.cardId }.distinct().size,
+                reviewsDone = today
+                    .filter { it.stateBefore == CardState.Review.wire || it.stateBefore == CardState.New.wire }
+                    .map { it.cardId }
+                    .distinct()
+                    .size,
             )
         }
     }
@@ -75,7 +79,7 @@ object StudyPlanner {
             .filter { it.state == CardState.Review && (it.dueAt ?: 0L) < window.end }
             .sortedWith(compareBy<QueueCard> { it.dueAt ?: 0L }.thenBy { it.id })
         val reviews = reviewsDue.take(reviewRoom)
-        val newRoom = (limits.newPerDay - progress.newIntroduced).coerceAtLeast(0)
+        val newRoom = minOf(limits.newPerDay - progress.newIntroduced, reviewRoom - reviews.size).coerceAtLeast(0)
         val newAll = cards
             .filter { it.state == CardState.New }
             .sortedWith(compareBy<QueueCard> { it.position }.thenBy { it.createdAt }.thenBy { it.id })
@@ -103,10 +107,7 @@ class StudySession(
     plan: StudyPlan,
     private val learnAheadMs: Long = StudyPlanner.LEARN_AHEAD_MS,
 ) {
-    private val main = ArrayDeque<String>().apply {
-        plan.reviews.forEach { add(it.id) }
-        plan.news.forEach { add(it.id) }
-    }
+    private val main = ArrayDeque(interleave(plan.reviews.map { it.id }, plan.news.map { it.id }))
 
     private val learning = ArrayList<Pair<String, Long>>().apply {
         plan.learning.forEach { add(it.id to (it.dueAt ?: 0L)) }
@@ -155,4 +156,24 @@ class StudySession(
     fun remaining(now: Long): Int = main.size + learning.count { it.second <= now + learnAheadMs }
 
     fun laterToday(now: Long): List<Long> = learning.filter { it.second > now + learnAheadMs }.map { it.second }
+
+    companion object {
+        fun interleave(reviews: List<String>, news: List<String>): List<String> {
+            if (news.isEmpty()) return reviews
+            if (reviews.isEmpty()) return news
+            val total = reviews.size + news.size
+            val result = ArrayList<String>(total)
+            var reviewIndex = 0
+            var newIndex = 0
+            for (slot in 0 until total) {
+                val newsDue = (slot + 1).toLong() * news.size / total
+                if (newIndex < newsDue && newIndex < news.size || reviewIndex >= reviews.size) {
+                    result.add(news[newIndex++])
+                } else {
+                    result.add(reviews[reviewIndex++])
+                }
+            }
+            return result
+        }
+    }
 }
